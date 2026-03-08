@@ -1,0 +1,38 @@
+# Credentials & secrets
+.env
+private_key.pem
+*.pem
+*.key
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# ChromaDB (local vector store - too large for git)
+chroma_db/
+
+# ETL output (large CSV with embeddings)
+output/
+
+# Source documents (PDFs - too large for git, 250MB+)
+documents/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
