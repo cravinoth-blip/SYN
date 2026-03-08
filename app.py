@@ -26,18 +26,28 @@ if _env_path.exists():
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
-# ── ChromaDB ──────────────────────────────────────────────────────────────────
+# ── ChromaDB (lazy init so empty API key doesn't crash on startup) ─────────────
 CHROMA_PATH     = Path(os.getenv("CHROMA_PATH", str(Path(__file__).parent / "chroma_db")))
 COLLECTION_NAME = "rag_docs"
+CHROMA_PATH.mkdir(parents=True, exist_ok=True)
 
-_ef     = OpenAIEmbeddingFunction(api_key=OPENAI_API_KEY, model_name="text-embedding-3-small")
-_chroma = chromadb.PersistentClient(path=str(CHROMA_PATH))
+_chroma: chromadb.PersistentClient | None = None
+_collection = None
 
 def get_collection():
-    return _chroma.get_or_create_collection(
-        name=COLLECTION_NAME, embedding_function=_ef,
-        metadata={"hnsw:space": "cosine"},
-    )
+    global _chroma, _collection
+    if _chroma is None:
+        _chroma = chromadb.PersistentClient(path=str(CHROMA_PATH))
+    if _collection is None:
+        api_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is not set. Add it in Render > Environment.")
+        ef = OpenAIEmbeddingFunction(api_key=api_key, model_name="text-embedding-3-small")
+        _collection = _chroma.get_or_create_collection(
+            name=COLLECTION_NAME, embedding_function=ef,
+            metadata={"hnsw:space": "cosine"},
+        )
+    return _collection
 
 def retrieve_context(query: str, top_k: int = 8):
     col = get_collection()
