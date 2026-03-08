@@ -26,6 +26,6 @@ tqdm==4.67.3
 python-dotenv==1.2.2
 pydantic==2.12.5
 
-# Snowflake (ETL only)
-cryptography==46.0.5
-snowflake-connector-python==4.3.0
+# Snowflake (ETL only - install separately for local ETL runs)
+# cryptography==46.0.5
+# snowflake-connector-python==4.3.0

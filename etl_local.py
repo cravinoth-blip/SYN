@@ -6,17 +6,38 @@ Adapted from ETL_Code_Dec.ipynb (Google Colab version) for local execution.
 import os, json, re, csv, logging, time
 from pathlib import Path
 from dotenv import load_dotenv
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import load_pem_private_key, Encoding, PrivateFormat, NoEncryption
-
-import pandas as pd
-from tqdm import tqdm
-import pymupdf
-
-import snowflake.connector as sf
-from snowflake.connector.pandas_tools import write_pandas
 from openai import OpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import pymupdf
+
+# Optional heavy dependencies (only needed for Snowflake ETL upload, not for app.py)
+try:
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key, Encoding, PrivateFormat, NoEncryption
+    CRYPTO_AVAILABLE = True
+except ImportError:
+    CRYPTO_AVAILABLE = False
+
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+
+try:
+    from tqdm import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+    def tqdm(x, **kw):
+        return x
+
+try:
+    import snowflake.connector as sf
+    from snowflake.connector.pandas_tools import write_pandas
+    SNOWFLAKE_AVAILABLE = True
+except ImportError:
+    SNOWFLAKE_AVAILABLE = False
 
 # Optional imports
 try:
