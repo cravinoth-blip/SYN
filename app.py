@@ -27,7 +27,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
 # ── ChromaDB ──────────────────────────────────────────────────────────────────
-CHROMA_PATH     = Path(__file__).parent / "chroma_db"
+CHROMA_PATH     = Path(os.getenv("CHROMA_PATH", str(Path(__file__).parent / "chroma_db")))
 COLLECTION_NAME = "rag_docs"
 
 _ef     = OpenAIEmbeddingFunction(api_key=OPENAI_API_KEY, model_name="text-embedding-3-small")

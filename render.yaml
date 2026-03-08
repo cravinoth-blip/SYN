@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: syneos-rag
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    plan: starter
+
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false           # Set this in the Render dashboard
+      - key: CHROMA_PATH
+        value: /opt/chroma_db
+      - key: ANONYMIZED_TELEMETRY
+        value: "False"
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+    disk:
+      name: chroma-storage
+      mountPath: /opt/chroma_db
+      sizeGB: 2

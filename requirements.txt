@@ -1,10 +1,31 @@
-fastapi==0.70.0
-uvicorn==0.15.0
-cohere
-pinecone-client==2.0.0
-pinecone
-openai
-snowflake-connector-python
-cryptography
-opentelemetry-api
-snowflake-telemetry-python
+# Web framework
+fastapi==0.135.1
+uvicorn==0.41.0
+python-multipart==0.0.22
+
+# Vector DB
+chromadb==1.5.2
+
+# AI / Embeddings
+openai==2.26.0
+
+# Document extraction
+pymupdf==1.27.1
+python-docx==1.2.0
+openpyxl==3.1.5
+
+# Text splitting
+langchain-text-splitters==1.1.1
+
+# Data
+pandas==2.3.3
+requests==2.32.5
+tqdm==4.67.3
+
+# Env / utils
+python-dotenv==1.2.2
+pydantic==2.12.5
+
+# Snowflake (ETL only)
+cryptography==46.0.5
+snowflake-connector-python==4.3.0
