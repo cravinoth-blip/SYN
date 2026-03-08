@@ -8,8 +8,6 @@ from pydantic import BaseModel
 import os, json, logging, re, tempfile, shutil
 from pathlib import Path
 from openai import OpenAI
-from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
-import chromadb
 
 # ── Env loading ───────────────────────────────────────────────────────────────
 _env_path = Path(__file__).parent / ".env"
@@ -26,19 +24,23 @@ if _env_path.exists():
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
-# ── ChromaDB (lazy init so empty API key doesn't crash on startup) ─────────────
+# ── ChromaDB (fully lazy import + init — chromadb has slow Rust startup) ──────
+# chromadb is NOT imported at module level; it's imported inside get_collection()
+# so the app binds to $PORT immediately and passes Render's health check.
 CHROMA_PATH     = Path(os.getenv("CHROMA_PATH", str(Path(__file__).parent / "chroma_db")))
 COLLECTION_NAME = "rag_docs"
 CHROMA_PATH.mkdir(parents=True, exist_ok=True)
 
-_chroma: chromadb.PersistentClient | None = None
+_chroma     = None
 _collection = None
 
 def get_collection():
     global _chroma, _collection
     if _chroma is None:
-        _chroma = chromadb.PersistentClient(path=str(CHROMA_PATH))
+        import chromadb as _chromadb                                    # lazy import
+        _chroma = _chromadb.PersistentClient(path=str(CHROMA_PATH))
     if _collection is None:
+        from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction  # lazy
         api_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is not set. Add it in Render > Environment.")

@@ -4,7 +4,7 @@ uvicorn==0.41.0
 python-multipart==0.0.22
 
 # Vector DB
-chromadb==0.5.23
+chromadb==1.5.2
 
 # AI / Embeddings
 openai==2.26.0
