@@ -36,3 +36,11 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Claude Code memory (local only)
+.claude/

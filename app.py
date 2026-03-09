@@ -4,6 +4,7 @@ Features: Chat with streaming, File-in-chat reference lookup, Document Upload, L
 """
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os, json, logging, re, tempfile, shutil
 from pathlib import Path
@@ -76,6 +77,23 @@ def retrieve_context(query: str, top_k: int = 8):
 # ── FastAPI ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="RAG Chat")
 logging.basicConfig(level=logging.WARNING)
+
+# ── CORS — allow Vercel frontend + localhost dev ───────────────────────────────
+_allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+_extra = os.getenv("ALLOWED_ORIGINS", "")   # comma-separated, set in Render dashboard
+if _extra:
+    _allowed_origins.extend([o.strip() for o in _extra.split(",") if o.strip()])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ChatRequest(BaseModel):
     message: str
