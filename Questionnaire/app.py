@@ -84,7 +84,9 @@ def get_db():
     if db is None:
         if USE_POSTGRES:
             import psycopg2
-            db = g._database = DB(psycopg2.connect(DATABASE_URL), pg=True)
+            # Strip channel_binding param — psycopg2 doesn't support it
+            _url = DATABASE_URL.replace('&channel_binding=require', '').replace('?channel_binding=require&', '?').replace('channel_binding=require', '')
+            db = g._database = DB(psycopg2.connect(_url, gssencmode='disable'), pg=True)
         else:
             db = g._database = DB(
                 sqlite3.connect(os.path.join(BASE_DIR, 'responses.db')), pg=False
@@ -141,7 +143,8 @@ _SCHEMA_PG = _SCHEMA_SQLITE.replace(
 def init_db():
     if USE_POSTGRES:
         import psycopg2
-        conn = psycopg2.connect(DATABASE_URL)
+        _url = DATABASE_URL.replace('&channel_binding=require', '').replace('?channel_binding=require&', '?').replace('channel_binding=require', '')
+        conn = psycopg2.connect(_url, gssencmode='disable')
         cur = conn.cursor()
         # Execute each statement separately (psycopg2 doesn't support executescript)
         for stmt in _SCHEMA_PG.strip().split(';'):
