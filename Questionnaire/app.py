@@ -10,6 +10,8 @@ from datetime import datetime
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 USE_POSTGRES = DATABASE_URL.startswith('postgres')
+# On Vercel the deployment dir is read-only; only /tmp is writable
+SQLITE_PATH = '/tmp/responses.db' if os.environ.get('VERCEL') else os.path.join(BASE_DIR, 'responses.db')
 
 app = Flask(__name__,
             template_folder=os.path.join(BASE_DIR, 'templates'),
@@ -89,7 +91,7 @@ def get_db():
             db = g._database = DB(psycopg2.connect(_url, gssencmode='disable'), pg=True)
         else:
             db = g._database = DB(
-                sqlite3.connect(os.path.join(BASE_DIR, 'responses.db')), pg=False
+                sqlite3.connect(SQLITE_PATH), pg=False
             )
     return db
 
@@ -154,7 +156,7 @@ def init_db():
         conn.commit()
         conn.close()
     else:
-        conn = sqlite3.connect(os.path.join(BASE_DIR, 'responses.db'))
+        conn = sqlite3.connect(SQLITE_PATH)
         conn.executescript(_SCHEMA_SQLITE)
         conn.commit()
         conn.close()
