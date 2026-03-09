@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
+  "buildCommand": "cd ai-platform && npm install && npm run build",
+  "outputDirectory": "ai-platform/dist",
   "installCommand": "echo skip",
   "framework": null,
   "rewrites": [
