@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Admin – Alle Antworten{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <div>
+    <div class="page-title">Admin-Übersicht</div>
+    <div class="page-subtitle">Alle eingegangenen Umfrageantworten</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <span class="badge">{{ count }} Einträge</span>
+    {% if count > 0 %}
+    <a href="{{ url_for('export_excel_all') }}" class="btn-secondary" style="padding:7px 16px;font-size:0.88rem;">
+      &#8659; Excel (.xlsx)
+    </a>
+    <a href="{{ url_for('export_pdf_all') }}" class="btn-secondary" style="padding:7px 16px;font-size:0.88rem;">
+      &#8659; PDF
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if responses %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Eingereicht am</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in responses %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.respondent_name }}</td>
+        <td>{{ r.submitted_at }}</td>
+        <td><a href="{{ url_for('admin_detail', response_id=r.id) }}">Anzeigen &#8594;</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:40px;">
+  <p style="color:var(--text-mid);">Noch keine Antworten vorhanden.</p>
+  <a href="{{ url_for('index') }}" class="btn-primary" style="margin-top:16px;display:inline-block;">Zur Umfrage</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Bronchiectasis Unlocked – Willkommen{% endblock %}
+{% block content %}
+<div class="page-title">Bronchiektasen-Erkrankung entschlüsseln</div>
+<div class="page-subtitle">Ihr Praxisfall im Fokus</div>
+
+<div class="card-intro">
+  <p>Diese kurze Umfrage soll reale Versorgungsmuster bei Bronchiektasen-Erkrankung erfassen –
+     einschließlich Patient:innen-Charakteristika, Behandlungsansätzen und der Wahrnehmung
+     der deutschen S2K Leitlinie.</p>
+  <p>Bitte wählen Sie die Antwortoption(en), die Ihre Praxis am besten beschreiben.
+     Anschließend werden Sie gebeten, <strong>5 anonymisierte Patient:innenfälle</strong>
+     aus Ihrer Praxis zu dokumentieren.</p>
+</div>
+
+<div class="card">
+  <div class="intro-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <strong>Allgemeine Umfrage</strong>
+        <span>14 Fragen in 5 Abschnitten</span>
+      </div>
+    </div>
+    <div class="step-arrow">&#8594;</div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <strong>Patientenfälle</strong>
+        <span>5 anonymisierte Fälle</span>
+      </div>
+    </div>
+  </div>
+  <div class="form-actions" style="border-top:none;margin-top:0;padding-top:0;justify-content:flex-start;">
+    <a href="{{ url_for('survey') }}" class="btn-primary">Umfrage starten &#8594;</a>
+  </div>
+</div>
+{% endblock %}

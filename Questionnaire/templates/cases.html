@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% block title %}Patientenfälle 1–5{% endblock %}
+{% block content %}
+<div class="page-title">Patientenfälle</div>
+<div class="page-subtitle">Bitte dokumentieren Sie bis zu 5 anonymisierte Patientenfälle aus Ihrer Praxis. Beginnen Sie mit Patient:innen mit &#8805; 2 Exazerbationen/12 Monate.</div>
+
+<form method="POST" action="{{ url_for('cases', survey_id=survey_id) }}">
+
+  <div class="card" style="padding-bottom:0;">
+    <div class="tabs" id="case-tabs">
+      {% for n in range(1,6) %}
+      <button type="button" class="tab-btn {% if n==1 %}active{% endif %}" onclick="showCase({{ n }})">
+        Patientenfall {{ n }}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% for n in range(1,6) %}
+  {% set p = 'c' ~ n ~ '_' %}
+  <div id="case-panel-{{ n }}" class="tab-panel {% if n==1 %}active{% endif %}">
+    <div class="card">
+      <div class="section-header"><h2>Patientenfall {{ n }}</h2></div>
+
+      <!-- 1. Patientencharakteristika -->
+      <div class="case-section">
+        <div class="case-section-title">1. Patientencharakteristika</div>
+
+        <div class="question">
+          <div class="question-label" style="font-size:0.88rem;">Geschlecht &amp; Alter</div>
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <div class="radio-group inline">
+              <label class="radio-item"><input type="radio" name="{{ p }}gender" value="männlich"> männlich</label>
+              <label class="radio-item"><input type="radio" name="{{ p }}gender" value="weiblich"> weiblich</label>
+              <label class="radio-item"><input type="radio" name="{{ p }}gender" value="divers"> divers</label>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:0.9rem;font-weight:600;">Alter:</label>
+              <input type="number" name="{{ p }}age" min="0" max="120" style="width:72px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;" placeholder="Jahre">
+            </div>
+          </div>
+        </div>
+
+        <div class="question">
+          <div class="question-label" style="font-size:0.88rem;">Symptomatik:</div>
+          <div class="check-grid-2">
+            <label class="check-item"><input type="checkbox" name="{{ p }}s_husten"> Husten</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}s_fatigue"> Fatigue</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}s_auswurf"> Auswurf</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}s_thoraxschmerzen"> Thoraxschmerzen</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}s_fieber"> Fieber</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}s_haemoptysis"> Hämoptysen</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}s_dyspnoe"> Dyspnoe</label>
+          </div>
+        </div>
+
+        <div class="question">
+          <div class="question-label" style="font-size:0.88rem;">Klinische Schwere der Symptome (Ihre Einschätzung):</div>
+          <div class="radio-group inline">
+            <label class="radio-item"><input type="radio" name="{{ p }}severity" value="Leicht"> Leicht</label>
+            <label class="radio-item"><input type="radio" name="{{ p }}severity" value="Mittel"> Mittel</label>
+            <label class="radio-item"><input type="radio" name="{{ p }}severity" value="Schwer"> Schwer</label>
+          </div>
+        </div>
+
+        <div class="question">
+          <div class="question-label" style="font-size:0.88rem;">Wichtige Komorbiditäten <span class="question-hint">(Mehrfachauswahl möglich):</span></div>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <label class="check-item"><input type="checkbox" name="{{ p }}km_copd"> COPD</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}km_asthma"> Asthma</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}km_ntm"> NTM</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:0.9rem;">Andere:</span>
+              <input class="other-text" type="text" name="{{ p }}km_andere" placeholder="Freitext" style="width:180px;">
+            </div>
+          </div>
+        </div>
+
+        <div class="question" style="margin-bottom:0;">
+          <div class="question-label" style="font-size:0.88rem;">FEV&#8321;-Bereich:</div>
+          <div class="radio-group inline">
+            <label class="radio-item"><input type="radio" name="{{ p }}fev1" value=">=80"> &#8805; 80 %</label>
+            <label class="radio-item"><input type="radio" name="{{ p }}fev1" value="50-79"> 50 – 79 %</label>
+            <label class="radio-item"><input type="radio" name="{{ p }}fev1" value="<50"> &lt; 50 %</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Das letzte Jahr -->
+      <div class="case-section" style="border-top:1px solid var(--border);padding-top:18px;">
+        <div class="case-section-title">2. Das letzte Jahr auf einen Blick</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="question" style="margin-bottom:0;">
+            <div class="question-label" style="font-size:0.88rem;">Exazerbationen (vergangene 12 Monate):</div>
+            <div class="radio-group inline">
+              <label class="radio-item"><input type="radio" name="{{ p }}exaz" value="0"> 0</label>
+              <label class="radio-item"><input type="radio" name="{{ p }}exaz" value="1"> 1</label>
+              <label class="radio-item"><input type="radio" name="{{ p }}exaz" value="2"> 2</label>
+              <label class="radio-item"><input type="radio" name="{{ p }}exaz" value=">=3"> &#8805; 3</label>
+            </div>
+          </div>
+          <div class="question" style="margin-bottom:0;">
+            <div class="question-label" style="font-size:0.88rem;">Hospitalisierungen (vergangene 12 Monate):</div>
+            <div class="radio-group inline">
+              <label class="radio-item"><input type="radio" name="{{ p }}hosp" value="0"> 0</label>
+              <label class="radio-item"><input type="radio" name="{{ p }}hosp" value="1"> 1</label>
+              <label class="radio-item"><input type="radio" name="{{ p }}hosp" value=">=2"> &#8805; 2</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Aktuelles Vorgehen -->
+      <div class="case-section" style="border-top:1px solid var(--border);padding-top:18px;">
+        <div class="case-section-title">3. Aktuelles Vorgehen</div>
+
+        <!-- Basistherapie -->
+        <div class="question">
+          <div class="question-label" style="font-size:0.88rem;color:var(--purple-mid);">Basistherapie</div>
+          <div class="check-grid-2">
+            <label class="check-item"><input type="checkbox" name="{{ p }}b_rauchstopp"> Rauchstopp</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}b_rehabilitation"> Rehabilitation</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}b_schutzimpfungen"> Schutzimpfungen</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}b_selbstmanagement"> Optimierung des Selbstmanagements</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}b_physio"> Physiotherapeutische Atemtherapie</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}b_sekretolytisch"> Sekretolytische Therapie</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}b_vernebler"> Verneblerschulung</label>
+          </div>
+          <div class="other-row" style="margin-top:8px;">
+            <span style="font-size:0.88rem;color:var(--text-mid)">Andere:</span>
+            <input class="other-text" type="text" name="{{ p }}b_andere" placeholder="Freitext">
+          </div>
+        </div>
+
+        <!-- Akuttherapie -->
+        <div class="question">
+          <div class="question-label" style="font-size:0.88rem;color:var(--purple-mid);">Akuttherapie post Exazerbation</div>
+          <div class="check-grid-2">
+            <label class="check-item"><input type="checkbox" name="{{ p }}a_langzeit_antibiotika"> Langzeittherapie mit Antibiotika (oral/inhalativ)</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}a_lungentransplantation"> Lungentransplantation</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}a_antiinflammatorisch"> Antiinflammatorische Langzeittherapie</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}a_thoraxchirurgie"> Thoraxchirurgie</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}a_niv"> Nichtinvasive Beatmung bei chronischer ventilatorischer Insuffizienz</label>
+          </div>
+          <div class="other-row" style="margin-top:8px;">
+            <span style="font-size:0.88rem;color:var(--text-mid)">Andere:</span>
+            <input class="other-text" type="text" name="{{ p }}a_andere" placeholder="Freitext">
+          </div>
+        </div>
+
+        <!-- Zusätzliche Therapien -->
+        <div class="question" style="margin-bottom:0;">
+          <div class="question-label" style="font-size:0.88rem;color:var(--purple-mid);">Zusätzliche Therapien</div>
+          <div class="check-group vertical">
+            <label class="check-item"><input type="checkbox" name="{{ p }}z_bronchodilatatoren"> Bronchodilatatoren bei klinisch relevanter Dyspnoe und/oder obstruktiver Ventilationsstörung und/oder Überblähung (LABA/LAMA)</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}z_ics"> ICS (ohne Indikation durch Ätiologie o. Komorbidität)</label>
+            <label class="check-item"><input type="checkbox" name="{{ p }}z_mukoaktiv"> Mukoaktive Langzeittherapie als Adjuvantien der Atemphysiotherapie</label>
+          </div>
+          <div class="other-row" style="margin-top:8px;">
+            <span style="font-size:0.88rem;color:var(--text-mid)">Andere:</span>
+            <input class="other-text" type="text" name="{{ p }}z_andere" placeholder="Freitext">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation buttons between cases -->
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px;gap:10px;">
+      {% if n > 1 %}
+      <button type="button" class="btn-secondary" onclick="showCase({{ n-1 }})">&#8592; Patientenfall {{ n-1 }}</button>
+      {% else %}
+      <div></div>
+      {% endif %}
+      {% if n < 5 %}
+      <button type="button" class="btn-primary" onclick="showCase({{ n+1 }})">Patientenfall {{ n+1 }} &#8594;</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="form-actions">
+    <a href="{{ url_for('survey') }}" class="btn-secondary">Zurück zur Umfrage</a>
+    <button type="submit" class="btn-primary">Umfrage abschließen &#10003;</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showCase(n) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('case-panel-' + n).classList.add('active');
+  document.querySelectorAll('.tab-btn')[n-1].classList.add('active');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Vielen Dank!{% endblock %}
+{% block content %}
+<div class="card success-card">
+  <div class="success-icon">&#10003;</div>
+  <h2>Vielen Dank für Ihre Teilnahme!</h2>
+  <p>Ihre Antworten wurden erfolgreich gespeichert.</p>
+  <p style="color:var(--text-mid);font-size:0.9rem;margin-top:8px;">Ende der Umfrage – Ihre Daten werden für die strukturierte Gruppenarbeit im Expertenforum verwendet.</p>
+  <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="{{ url_for('index') }}" class="btn-secondary">Neue Umfrage starten</a>
+    <a href="{{ url_for('admin') }}" class="btn-primary">Antworten anzeigen (Admin)</a>
+  </div>
+</div>
+{% endblock %}

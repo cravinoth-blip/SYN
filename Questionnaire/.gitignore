@@ -1,0 +1,5 @@
+.venv/
+responses.db
+__pycache__/
+*.pyc
+*.pyo

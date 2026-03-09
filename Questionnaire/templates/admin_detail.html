@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% block title %}Antwort #{{ response.id }}{% endblock %}
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('admin') }}" style="color:var(--purple-main);text-decoration:none;font-size:0.9rem;">&#8592; Zurück zur Übersicht</a>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+  <div>
+    <div class="page-title">{{ response.respondent_name }}</div>
+    <div class="page-subtitle">Eingereicht: {{ response.submitted_at }}</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="{{ url_for('export_excel_single', response_id=response.id) }}" class="btn-secondary" style="padding:8px 16px;font-size:0.88rem;">
+      &#8659; Excel (.xlsx)
+    </a>
+    <a href="{{ url_for('export_pdf_single', response_id=response.id) }}" class="btn-secondary" style="padding:8px 16px;font-size:0.88rem;">
+      &#8659; PDF
+    </a>
+  </div>
+</div>
+
+<!-- Survey Answers -->
+<div class="card">
+  <div class="detail-section">
+    <h3>Abschnitt 1 – Praxis &amp; Patient:innenkollektiv</h3>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">Q1 – Anzahl Patient:innen</div>
+        <div class="value">{{ response.q1_patient_count or '–' }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q2 – Komorbiditäten</div>
+        <div class="value">
+          {% if response.q2_comorbidities %}
+            {% for k, v in response.q2_comorbidities.items() %}
+              <span class="tag">{{ k }}: {{ v }}%</span>
+            {% endfor %}
+          {% else %}–{% endif %}
+          {% if response.q2_keine_nicht_erhoben %}<span class="tag">Keine / nicht erhoben</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q2 – Ätiologien</div>
+        <div class="value">
+          {% if response.q2_etiologies %}
+            {% for k, v in response.q2_etiologies.items() %}
+              <span class="tag">{{ k }}: {{ v }}%</span>
+            {% endfor %}
+          {% else %}–{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q3 – Hochrisiko-Faktoren</div>
+        <div class="value">
+          {% if response.q3_high_risk %}
+            {% for item in response.q3_high_risk %}<span class="tag">{{ item }}</span>{% endfor %}
+          {% endif %}
+          {% if response.q3_sonstiges %}<span class="tag">{{ response.q3_sonstiges }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q4 – Exazerbationsverteilung</div>
+        <div class="value">
+          0: {{ response.q4_exaz_0 or '–' }}% &nbsp;|&nbsp;
+          1: {{ response.q4_exaz_1 or '–' }}% &nbsp;|&nbsp;
+          2: {{ response.q4_exaz_2 or '–' }}% &nbsp;|&nbsp;
+          &gt;2: {{ response.q4_exaz_more or '–' }}%
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h3>Abschnitt 2 – Diagnose</h3>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">Q5 – Diagnose gestellt durch</div>
+        <div class="value">{{ response.q5_diagnosis_by or '–' }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q6 – Diagnostische Maßnahmen</div>
+        <div class="value">
+          {% if response.q6_diagnostic %}
+            {% for item in response.q6_diagnostic %}<span class="tag">{{ item }}</span>{% endfor %}
+          {% endif %}
+          {% if response.q6_other %}<span class="tag">{{ response.q6_other }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h3>Abschnitt 3 – Behandlungs- &amp; Versorgungsmuster</h3>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">Q7 – Behandlungsansätze</div>
+        <div class="value">
+          {% if response.q7_treatment %}{% for i in response.q7_treatment %}<span class="tag">{{ i }}</span>{% endfor %}{% endif %}
+          {% if response.q7_other %}<span class="tag">{{ response.q7_other }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q8 – Behandlungsprioritäten</div>
+        <div class="value">
+          {% if response.q8_priorities %}{% for i in response.q8_priorities %}<span class="tag">{{ i }}</span>{% endfor %}{% endif %}
+          {% if response.q8_other %}<span class="tag">{{ response.q8_other }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q9 – Ungedeckter Bedarf</div>
+        <div class="value">{{ response.q9_unmet_need or '–' }}{% if response.q9_other %} / {{ response.q9_other }}{% endif %}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q10 – Therapiemonitoring</div>
+        <div class="value">
+          {% if response.q10_monitoring %}{% for i in response.q10_monitoring %}<span class="tag">{{ i }}</span>{% endfor %}{% endif %}
+          {% if response.q10_other %}<span class="tag">{{ response.q10_other }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q11 – Besuchsfrequenz/Jahr</div>
+        <div class="value">{{ response.q11_visit_frequency or '–' }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Q12 – Ungemeldete Exazerbationen</div>
+        <div class="value">{{ response.q12_unreported or '–' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h3>Abschnitt 4 – Zusammenarbeit</h3>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">Q13 – MDT-Zusammenarbeit</div>
+        <div class="value">
+          {% if response.q13_mdt %}{% for i in response.q13_mdt %}<span class="tag">{{ i }}</span>{% endfor %}{% endif %}
+          {% if response.q13_other %}<span class="tag">{{ response.q13_other }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section" style="margin-bottom:0;">
+    <h3>Abschnitt 5 – S2k-Leitlinie 2024</h3>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">Q14 – Wahrnehmung der Leitlinie</div>
+        <div class="value">{{ response.q14_guideline or '–' }}</div>
+      </div>
+      {% if response.q14_comment %}
+      <div class="detail-item" style="grid-column:1/-1;">
+        <div class="label">Q14 – Kommentar</div>
+        <div class="value" style="white-space:pre-wrap;background:var(--purple-bg);padding:10px;border-radius:6px;">{{ response.q14_comment }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Patient Cases -->
+{% if cases %}
+<div class="card">
+  <div class="section-header"><h2>Patientenfälle</h2></div>
+  <div class="case-tabs-admin">
+    {% for c in cases %}
+    <button type="button" class="case-tab-admin {% if loop.first %}active{% endif %}" onclick="showAdminCase({{ c.case_number }})">
+      Fall {{ c.case_number }}
+    </button>
+    {% endfor %}
+  </div>
+
+  {% for c in cases %}
+  <div id="admin-case-{{ c.case_number }}" class="case-panel-admin {% if loop.first %}active{% endif %}">
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">Geschlecht / Alter</div>
+        <div class="value">{{ c.gender or '–' }} / {{ c.age or '–' }} Jahre</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Symptome</div>
+        <div class="value">{% if c.symptoms %}{% for s in c.symptoms %}<span class="tag">{{ s }}</span>{% endfor %}{% else %}–{% endif %}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Schwere</div>
+        <div class="value">{{ c.symptom_severity or '–' }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Komorbiditäten</div>
+        <div class="value">
+          {% if c.comorbidities %}{% for s in c.comorbidities %}<span class="tag">{{ s }}</span>{% endfor %}{% endif %}
+          {% if c.comorbidities_other %}<span class="tag">{{ c.comorbidities_other }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">FEV&#8321;</div>
+        <div class="value">{{ c.fev1_range or '–' }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Exazerbationen / Hospitalisierungen</div>
+        <div class="value">{{ c.exacerbations or '–' }} / {{ c.hospitalizations or '–' }}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Basistherapie</div>
+        <div class="value">
+          {% if c.base_therapy %}{% for s in c.base_therapy %}<span class="tag">{{ s }}</span>{% endfor %}{% endif %}
+          {% if c.base_therapy_other %}<span class="tag">{{ c.base_therapy_other }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Akuttherapie</div>
+        <div class="value">
+          {% if c.acute_therapy %}{% for s in c.acute_therapy %}<span class="tag">{{ s }}</span>{% endfor %}{% endif %}
+          {% if c.acute_therapy_other %}<span class="tag">{{ c.acute_therapy_other }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Zusätzliche Therapien</div>
+        <div class="value">
+          {% if c.additional_therapy %}{% for s in c.additional_therapy %}<span class="tag">{{ s }}</span>{% endfor %}{% endif %}
+          {% if c.additional_therapy_other %}<span class="tag">{{ c.additional_therapy_other }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+function showAdminCase(n) {
+  document.querySelectorAll('.case-panel-admin').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.case-tab-admin').forEach(b => b.classList.remove('active'));
+  document.getElementById('admin-case-' + n).classList.add('active');
+  document.querySelectorAll('.case-tab-admin')[n-1].classList.add('active');
+}
+</script>
+{% endblock %}

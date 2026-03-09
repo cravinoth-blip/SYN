@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Bronchiectasis Unlocked – Umfrage{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-content">
+      <div class="header-brand">
+        <span class="insmed-logo">ins<strong>med</strong><sup>®</sup></span>
+      </div>
+      <div class="header-divider"></div>
+      <div class="header-text">
+        <h1>Bronchiectasis Unlocked</h1>
+        <p>Umfrage für Teilnehmende des Expertenforums</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    Insmed Germany GmbH &middot; The Squaire 12, Am Flughafen, 60549 Frankfurt am Main
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

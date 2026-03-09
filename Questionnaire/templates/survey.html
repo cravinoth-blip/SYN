@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+{% block title %}Umfrage – Abschnitte 1–5{% endblock %}
+{% block content %}
+<div class="page-title">Allgemeine Umfrage</div>
+<div class="page-subtitle">Bitte wählen Sie die Antwortoption(en), die Ihre Praxis am besten beschreiben.</div>
+
+<form method="POST" action="{{ url_for('survey') }}">
+
+  <!-- Name -->
+  <div class="name-field">
+    <label for="respondent_name">Bitte tragen Sie hier Ihren Titel, Vornamen und Namen ein: <span style="color:red">*</span></label>
+    <input class="text-input" type="text" id="respondent_name" name="respondent_name" required placeholder="z. B. Dr. med. Erika Mustermann">
+  </div>
+
+  <!-- ═══ ABSCHNITT 1 ═══ -->
+  <div class="card">
+    <div class="section-header"><h2>Abschnitt 1 – Ihre Praxis &amp; Ihr Patient:innenkollektiv</h2></div>
+
+    <!-- Q1 -->
+    <div class="question">
+      <div class="question-label">1. Geschätzte Anzahl an Patient:innen mit Bronchiektasen-Erkrankung in Ihrer Praxis</div>
+      <div class="radio-group inline">
+        <label class="radio-item"><input type="radio" name="q1" value="<10"> &lt; 10</label>
+        <label class="radio-item"><input type="radio" name="q1" value="10-30"> 10 – 30</label>
+        <label class="radio-item"><input type="radio" name="q1" value="31-50"> 31 – 50</label>
+        <label class="radio-item"><input type="radio" name="q1" value=">50"> &gt; 50</label>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="question">
+      <div class="question-label">2. Anteil der Patient:innen mit Bronchiektasen-Erkrankung mit folgenden Komorbiditäten / Ätiologien
+        <span class="question-hint">(Mehrfachauswahl möglich; bitte ungefähren %-Anteil angeben)</span>
+      </div>
+      <div class="q2-columns">
+        <!-- Komorbiditäten -->
+        <div class="q2-col">
+          <h4>Komorbiditäten</h4>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_k_COPD"> COPD</label>
+            <input class="pct-input" type="number" name="q2_k_COPD_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_k_Asthma"> Asthma</label>
+            <input class="pct-input" type="number" name="q2_k_Asthma_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_k_NTM"> NTM-Infektion</label>
+            <input class="pct-input" type="number" name="q2_k_NTM_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_k_Mukoviszidose"> Mukoviszidose</label>
+            <input class="pct-input" type="number" name="q2_k_Mukoviszidose_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_k_sonstiges"> Sonstiges:</label>
+            <input class="q2-text-input" type="text" name="q2_k_sonstiges_label" placeholder="Bezeichnung">
+            <input class="pct-input" type="number" name="q2_k_sonstiges_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row" style="margin-top:8px;">
+            <label><input type="checkbox" name="q2_keine"> Keine / nicht erhoben</label>
+          </div>
+        </div>
+        <!-- Ätiologien -->
+        <div class="q2-col">
+          <h4>Ätiologien</h4>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_a_idiopathisch"> idiopathisch</label>
+            <input class="pct-input" type="number" name="q2_a_idiopathisch_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_a_COPD"> COPD</label>
+            <input class="pct-input" type="number" name="q2_a_COPD_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_a_Asthma"> Asthma</label>
+            <input class="pct-input" type="number" name="q2_a_Asthma_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_a_NTM"> NTM-Infektion</label>
+            <input class="pct-input" type="number" name="q2_a_NTM_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_a_Mukoviszidose"> Mukoviszidose</label>
+            <input class="pct-input" type="number" name="q2_a_Mukoviszidose_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+          <div class="q2-row">
+            <label><input type="checkbox" name="q2_a_sonstige"> Sonstige:</label>
+            <input class="q2-text-input" type="text" name="q2_a_sonstige_label" placeholder="Bezeichnung">
+            <input class="pct-input" type="number" name="q2_a_sonstige_pct" min="0" max="100" placeholder="%">
+            <span class="pct-label">%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="question">
+      <div class="question-label">3. Welche Faktoren definieren Ihrer Meinung nach am ehesten „Hochrisiko-Patient:innen" mit Bronchiektasen-Erkrankung?
+        <span class="question-hint">(Mehrfachauswahl)</span>
+      </div>
+      <div class="check-grid-2">
+        <label class="check-item"><input type="checkbox" name="q3_exaz_2plus"> &#8805; 2 Exazerbationen pro Jahr</label>
+        <label class="check-item"><input type="checkbox" name="q3_progredienter"> Progredienter Verlauf</label>
+        <label class="check-item"><input type="checkbox" name="q3_hospitalisierung"> Hospitalisierung innerhalb der letzten 12 Monate</label>
+        <label class="check-item"><input type="checkbox" name="q3_symptombelastung"> Hohe Symptombelastung / reduzierte Lebensqualität</label>
+        <label class="check-item"><input type="checkbox" name="q3_chron_infektion"> Chronische Infektion/Kolonisation (z. B. P. aeruginosa)</label>
+        <label class="check-item"><input type="checkbox" name="q3_antibiotika"> Häufiger Antibiotikabedarf</label>
+        <label class="check-item"><input type="checkbox" name="q3_niedriger_fev1"> Niedriger FEV&#8321; / eingeschränkte Lungenfunktion</label>
+      </div>
+      <div class="other-row" style="margin-top:10px;">
+        <span style="font-size:0.9rem;color:var(--text-mid)">Sonstiges:</span>
+        <input class="other-text" type="text" name="q3_sonstiges_text" placeholder="Freitext">
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="question">
+      <div class="question-label">4. Wie hoch ist der Anteil ihrer Patient:innen mit Bronchiektasen-Erkrankung mit 0, 1, 2, oder &gt; 2 Exazerbationen innerhalb der letzten 12 Monate?
+        <span class="question-hint">(bitte ungefähren %-Anteil angeben)</span>
+      </div>
+      <div class="exaz-row">
+        <div class="exaz-item"><label>0:</label><input type="number" name="q4_0" min="0" max="100" placeholder="%"> <span class="pct-label">%</span></div>
+        <div class="exaz-item"><label>1:</label><input type="number" name="q4_1" min="0" max="100" placeholder="%"> <span class="pct-label">%</span></div>
+        <div class="exaz-item"><label>2:</label><input type="number" name="q4_2" min="0" max="100" placeholder="%"> <span class="pct-label">%</span></div>
+        <div class="exaz-item"><label>&gt; 2:</label><input type="number" name="q4_more" min="0" max="100" placeholder="%"> <span class="pct-label">%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ABSCHNITT 2 ═══ -->
+  <div class="card">
+    <div class="section-header"><h2>Abschnitt 2 – Diagnose</h2></div>
+
+    <!-- Q5 -->
+    <div class="question">
+      <div class="question-label">5. Wer stellt typischerweise die Diagnose „Bronchiektasen-Erkrankung"?</div>
+      <div class="check-grid-2">
+        <label class="radio-item"><input type="radio" name="q5" value="Pneumologe niedergelassen"> Pneumolog:in (niedergelassen)</label>
+        <label class="radio-item"><input type="radio" name="q5" value="Facharzt Universitaet"> Fachärzt:in im Universitäts- / Referenzzentrum</label>
+        <label class="radio-item"><input type="radio" name="q5" value="Facharzt Krankenhaus"> Fachärzt:in im Krankenhaus</label>
+        <label class="radio-item"><input type="radio" name="q5" value="Interdisziplinaer"> Gemeinsam / interdisziplinär</label>
+      </div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="question">
+      <div class="question-label">6. Welche diagnostischen Maßnahmen sind in Ihrer Einrichtung Routine?
+        <span class="question-hint">(max. 3 auswählen)</span>
+      </div>
+      <div class="check-grid-2" id="q6-group">
+        <label class="check-item"><input type="checkbox" name="q6_sputumkultur" class="q6-cb"> Sputumkultur / Mikrobiologie</label>
+        <label class="check-item"><input type="checkbox" name="q6_blutuntersuchungen" class="q6-cb"> Blutuntersuchungen / Biomarker</label>
+        <label class="check-item"><input type="checkbox" name="q6_lungenfunktion" class="q6-cb"> Lungenfunktion (Spirometrie)</label>
+        <label class="check-item"><input type="checkbox" name="q6_pulsoximetrie" class="q6-cb"> Pulsoximetrie / kapilläre Blutgasanalyse</label>
+        <label class="check-item"><input type="checkbox" name="q6_feno" class="q6-cb"> FeNO</label>
+      </div>
+      <div class="other-row" style="margin-top:10px;">
+        <span style="font-size:0.9rem;color:var(--text-mid)">Sonstiges:</span>
+        <input class="other-text" type="text" name="q6_other" placeholder="Freitext">
+      </div>
+      <div id="q6-warn" style="color:#c0392b;font-size:0.82rem;margin-top:4px;display:none;">Bitte max. 3 auswählen.</div>
+    </div>
+  </div>
+
+  <!-- ═══ ABSCHNITT 3 ═══ -->
+  <div class="card">
+    <div class="section-header"><h2>Abschnitt 3 – Behandlungs- &amp; Versorgungsmuster</h2></div>
+
+    <!-- Q7 -->
+    <div class="question">
+      <div class="question-label">7. Welche langfristigen Behandlungsansätze sind bei Ihren Patient:innen mit Bronchiektasen-Erkrankung am häufigsten?
+        <span class="question-hint">(max. 3 auswählen)</span>
+      </div>
+      <div class="check-grid-2" id="q7-group">
+        <label class="check-item"><input type="checkbox" name="q7_atemphysio" class="q7-cb"> Atemphysiotherapie</label>
+        <label class="check-item"><input type="checkbox" name="q7_ics" class="q7-cb"> ICS</label>
+        <label class="check-item"><input type="checkbox" name="q7_makrolid" class="q7-cb"> Chronische Makrolidtherapie bei &#8805; 2 Exazerbationen/Jahr</label>
+        <label class="check-item"><input type="checkbox" name="q7_impfungen" class="q7-cb"> Impfungen</label>
+        <label class="check-item"><input type="checkbox" name="q7_mukolytika" class="q7-cb"> Mukolytika/Sekretolytika</label>
+        <label class="check-item"><input type="checkbox" name="q7_rehabilitation" class="q7-cb"> Rehabilitation</label>
+        <label class="check-item"><input type="checkbox" name="q7_inh_antibiotika" class="q7-cb"> Inhalative Antibiotika</label>
+        <label class="check-item"><input type="checkbox" name="q7_bronchodilatatoren" class="q7-cb"> Bronchodilatatoren (LABA/LAMA)</label>
+      </div>
+      <div class="other-row" style="margin-top:10px;">
+        <span style="font-size:0.9rem;color:var(--text-mid)">Sonstiges:</span>
+        <input class="other-text" type="text" name="q7_other" placeholder="Freitext">
+      </div>
+      <div id="q7-warn" style="color:#c0392b;font-size:0.82rem;margin-top:4px;display:none;">Bitte max. 3 auswählen.</div>
+    </div>
+
+    <!-- Q8 -->
+    <div class="question">
+      <div class="question-label">8. Welche Hauptprioritäten und -ziele verfolgen Sie bei der Behandlung der Bronchiektasen-Erkrankung?
+        <span class="question-hint">(max. 3 auswählen)</span>
+      </div>
+      <div class="check-grid-2" id="q8-group">
+        <label class="check-item"><input type="checkbox" name="q8_clearance" class="q8-cb"> Optimierung der Atemwegs-/Sekret-Clearance</label>
+        <label class="check-item"><input type="checkbox" name="q8_hospitalisierungen" class="q8-cb"> Vermeidung von Hospitalisierungen</label>
+        <label class="check-item"><input type="checkbox" name="q8_infektionen" class="q8-cb"> Kontrolle / Prävention von Infektionen</label>
+        <label class="check-item"><input type="checkbox" name="q8_komorbiditaeten" class="q8-cb"> Management von Komorbiditäten (COPD, Asthma, etc.)</label>
+        <label class="check-item"><input type="checkbox" name="q8_exaz_reduktion" class="q8-cb"> Reduktion von Exazerbationen</label>
+        <label class="check-item"><input type="checkbox" name="q8_antibiotika" class="q8-cb"> Minimierung von Antibiotikagebrauch</label>
+        <label class="check-item"><input type="checkbox" name="q8_lebensqualitaet" class="q8-cb"> Verbesserung von Lebensqualität</label>
+        <label class="check-item"><input type="checkbox" name="q8_lungenfunktion" class="q8-cb"> Erhalt der Lungenfunktion</label>
+      </div>
+      <div class="other-row" style="margin-top:10px;">
+        <span style="font-size:0.9rem;color:var(--text-mid)">Sonstiges:</span>
+        <input class="other-text" type="text" name="q8_other" placeholder="Freitext">
+      </div>
+      <div id="q8-warn" style="color:#c0392b;font-size:0.82rem;margin-top:4px;display:none;">Bitte max. 3 auswählen.</div>
+    </div>
+
+    <!-- Q9 -->
+    <div class="question">
+      <div class="question-label">9. Was sehen Sie als wichtigsten ungedeckten Bedarf in der aktuellen Versorgung der Bronchiektasen-Erkrankung?
+        <span class="question-hint">(eine Antwort)</span>
+      </div>
+      <div class="check-group vertical">
+        <label class="radio-item"><input type="radio" name="q9" value="Fruehere Identifizierung"> Frühere Identifizierung von Hochrisiko-Patient:innen</label>
+        <label class="radio-item"><input type="radio" name="q9" value="Bessere Exazerbationsoptionen"> Bessere Optionen zur Reduktion oder Vermeidung von Exazerbationen</label>
+        <label class="radio-item"><input type="radio" name="q9" value="Entzuendungstherapien"> Therapien, die gezielt die Entzündung in den Atemwegen adressieren</label>
+        <label class="radio-item"><input type="radio" name="q9" value="Management chronischer Infektionen"> Verbessertes Management chronischer Infektionen</label>
+        <label class="radio-item"><input type="radio" name="q9" value="Adhaerenzunterstuetzung"> Bessere Adhärenzunterstützung</label>
+      </div>
+      <div class="other-row" style="margin-top:10px;">
+        <span style="font-size:0.9rem;color:var(--text-mid)">Sonstiges:</span>
+        <input class="other-text" type="text" name="q9_other" placeholder="Freitext">
+      </div>
+    </div>
+
+    <!-- Q10 -->
+    <div class="question">
+      <div class="question-label">10. Wie überwachen Sie das Therapieansprechen bei Patient:innen mit Bronchiektasen-Erkrankung?
+        <span class="question-hint">(Mehrfachauswahl möglich)</span>
+      </div>
+      <div class="check-grid-2">
+        <label class="check-item"><input type="checkbox" name="q10_lungenfunktion"> Regelmäßige Lungenfunktion (z. B. Spirometrie / FEV&#8321;)</label>
+        <label class="check-item"><input type="checkbox" name="q10_physio_technik"> Überprüfung der Physiotherapie-Technik</label>
+        <label class="check-item"><input type="checkbox" name="q10_sputumkulturen"> Wiederholte Sputumkulturen / Mikrobiologie</label>
+        <label class="check-item"><input type="checkbox" name="q10_adhaerenz"> Überprüfung der Adhärenz</label>
+        <label class="check-item"><input type="checkbox" name="q10_hrct"> HRCT</label>
+        <label class="check-item"><input type="checkbox" name="q10_nach_exaz"> Nach-Exazerbations-Reevaluation der Therapie</label>
+        <label class="check-item"><input type="checkbox" name="q10_symptom_lq"> Symptom- oder Lebensqualitätsbewertung bei jedem Besuch</label>
+        <label class="check-item"><input type="checkbox" name="q10_exaz_frequenz"> Erfassung von Exazerbationsfrequenz oder -schwere</label>
+      </div>
+      <div class="other-row" style="margin-top:10px;">
+        <span style="font-size:0.9rem;color:var(--text-mid)">Sonstiges:</span>
+        <input class="other-text" type="text" name="q10_other" placeholder="Freitext">
+      </div>
+    </div>
+
+    <!-- Q11 -->
+    <div class="question">
+      <div class="question-label">11. Wie hoch ist die Besuchsfrequenz pro Jahr von Patient:innen mit Bronchiektasen-Erkrankung mit 2 oder mehr Exazerbationen in den letzten 12 Monaten?</div>
+      <div class="radio-group inline">
+        <label class="radio-item"><input type="radio" name="q11" value="1-2"> 1 – 2</label>
+        <label class="radio-item"><input type="radio" name="q11" value="3-4"> 3 – 4</label>
+        <label class="radio-item"><input type="radio" name="q11" value="5-6"> 5 – 6</label>
+        <label class="radio-item"><input type="radio" name="q11" value=">6"> &gt; 6</label>
+      </div>
+    </div>
+
+    <!-- Q12 -->
+    <div class="question">
+      <div class="question-label">12. Wie hoch schätzen Sie den Anteil an Exazerbationen, welche Ihnen von Ihren Patient:innen nicht gemeldet werden?</div>
+      <div class="radio-group inline">
+        <label class="radio-item"><input type="radio" name="q12" value="0%"> 0 %</label>
+        <label class="radio-item"><input type="radio" name="q12" value="0-25%"> 0 – 25 %</label>
+        <label class="radio-item"><input type="radio" name="q12" value="26-50%"> 26 – 50 %</label>
+        <label class="radio-item"><input type="radio" name="q12" value="51-75%"> 51 – 75 %</label>
+        <label class="radio-item"><input type="radio" name="q12" value=">75%"> &gt; 75 %</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ABSCHNITT 4 ═══ -->
+  <div class="card">
+    <div class="section-header"><h2>Abschnitt 4 – Zusammenarbeit &amp; Unterstützungsbedarf</h2></div>
+
+    <!-- Q13 -->
+    <div class="question">
+      <div class="question-label">13. Wie erfolgt die interdisziplinäre Zusammenarbeit (MDT) in Ihrer Einrichtung?
+        <span class="question-hint">(Mehrfachauswahl möglich)</span>
+      </div>
+      <div class="check-grid-2">
+        <label class="check-item"><input type="checkbox" name="q13_mdt_meetings"> Regelmäßige MDT-Meetings (geplante Fallbesprechungen)</label>
+        <label class="check-item"><input type="checkbox" name="q13_versorgungspfad"> Zentraler Versorgungspfad mit definierten Rollen</label>
+        <label class="check-item"><input type="checkbox" name="q13_ad_hoc"> Ad-hoc-Konsultationen mit anderen Fachrichtungen</label>
+        <label class="check-item"><input type="checkbox" name="q13_informelle_komm"> Informelle Kommunikation (Telefon/E-Mail)</label>
+        <label class="check-item"><input type="checkbox" name="q13_elektronische_akte"> Gemeinsame elektronische Patient:innenakte oder Kommunikationsplattform</label>
+        <label class="check-item"><input type="checkbox" name="q13_keine_zusammenarbeit"> Keine strukturierte Zusammenarbeit</label>
+      </div>
+      <div class="other-row" style="margin-top:10px;">
+        <span style="font-size:0.9rem;color:var(--text-mid)">Sonstiges:</span>
+        <input class="other-text" type="text" name="q13_other" placeholder="Freitext">
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ABSCHNITT 5 ═══ -->
+  <div class="card">
+    <div class="section-header"><h2>Abschnitt 5 – Die deutsche S2k-Leitlinie 2024</h2></div>
+
+    <!-- Q14 -->
+    <div class="question">
+      <div class="question-label">14. Wie nehmen Sie die deutsche S2k-Leitlinie 2024 „Management erwachsener Patientinnen und Patienten mit Bronchiektasen-Erkrankung" wahr, und welchen Einfluss hat sie auf Ihre Praxis?</div>
+      <div class="check-group vertical">
+        <label class="radio-item"><input type="radio" name="q14" value="Bringt neue Aspekte"> Sie bringt wichtige neue Aspekte, die mein Management verändert haben</label>
+        <label class="radio-item"><input type="radio" name="q14" value="Bestaetigt bisheriges Vorgehen"> Sie bestätigt weitgehend mein bisheriges Vorgehen und liefert hilfreiche Klarstellungen</label>
+        <label class="radio-item"><input type="radio" name="q14" value="Nützlich aber herausfordernd"> Sie ist nützlich, aber die praktische Umsetzung im Alltag ist herausfordernd</label>
+        <label class="radio-item"><input type="radio" name="q14" value="Nicht vertraut"> Ich bin mit der Leitlinie nicht vertraut</label>
+      </div>
+      <div style="margin-top:16px;">
+        <div style="font-size:0.9rem;color:var(--text-mid);margin-bottom:6px;">Optionaler Kommentar: Welche Teile der Leitlinie empfinden Sie als besonders relevant oder herausfordernd?</div>
+        <textarea class="textarea-input" name="q14_comment" rows="4" placeholder="Ihr Kommentar (optional)"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="{{ url_for('index') }}" class="btn-secondary">Zurück</a>
+    <button type="submit" class="btn-primary">Weiter zu den Patientenfällen &#8594;</button>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function limitCheckboxes(cls, max, warnId) {
+  const boxes = document.querySelectorAll('.' + cls);
+  const warn = document.getElementById(warnId);
+  boxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      const checked = document.querySelectorAll('.' + cls + ':checked').length;
+      if (checked > max) {
+        this.checked = false;
+        warn.style.display = 'block';
+        setTimeout(() => warn.style.display = 'none', 3000);
+      }
+    });
+  });
+}
+limitCheckboxes('q6-cb', 3, 'q6-warn');
+limitCheckboxes('q7-cb', 3, 'q7-warn');
+limitCheckboxes('q8-cb', 3, 'q8-warn');
+</script>
+{% endblock %}
