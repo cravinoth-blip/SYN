@@ -464,31 +464,34 @@ async def upload_stream(file: UploadFile = File(...)):
 # ── Library endpoints ─────────────────────────────────────────────────────────
 @app.get("/documents")
 async def list_documents():
-    conn = get_sf_conn()
-    cur  = conn.cursor()
-    cur.execute(f"""
-        SELECT SOURCE_FILE, TITLE, AUTHORS, PUBLISHED, DOI, SUMMARY, FILE_TYPE,
-               COUNT(*) AS CHUNK_COUNT
-        FROM {TABLE_NAME}
-        GROUP BY SOURCE_FILE, TITLE, AUTHORS, PUBLISHED, DOI, SUMMARY, FILE_TYPE
-        ORDER BY SOURCE_FILE
-    """)
-    cols = [d[0] for d in cur.description]
-    docs = []
-    for row in cur.fetchall():
-        r = dict(zip(cols, row))
-        docs.append({
-            "source_file":  r.get("SOURCE_FILE", ""),
-            "title":        r.get("TITLE", "") or "",
-            "authors":      r.get("AUTHORS", "") or "",
-            "published":    str(r.get("PUBLISHED", "")) if r.get("PUBLISHED") else "",
-            "doi":          r.get("DOI", "") or "",
-            "summary":      r.get("SUMMARY", "") or "",
-            "file_type":    r.get("FILE_TYPE", "") or "",
-            "chunk_count":  int(r.get("CHUNK_COUNT", 0)),
-        })
-    cur.close()
-    return {"documents": docs}
+    try:
+        conn = get_sf_conn()
+        cur  = conn.cursor()
+        cur.execute(f"""
+            SELECT SOURCE_FILE, TITLE, AUTHORS, PUBLISHED, DOI, SUMMARY, FILE_TYPE,
+                   COUNT(*) AS CHUNK_COUNT
+            FROM {TABLE_NAME}
+            GROUP BY SOURCE_FILE, TITLE, AUTHORS, PUBLISHED, DOI, SUMMARY, FILE_TYPE
+            ORDER BY SOURCE_FILE
+        """)
+        cols = [d[0] for d in cur.description]
+        docs = []
+        for row in cur.fetchall():
+            r = dict(zip(cols, row))
+            docs.append({
+                "source_file":  r.get("SOURCE_FILE", ""),
+                "title":        r.get("TITLE", "") or "",
+                "authors":      r.get("AUTHORS", "") or "",
+                "published":    str(r.get("PUBLISHED", "")) if r.get("PUBLISHED") else "",
+                "doi":          r.get("DOI", "") or "",
+                "summary":      r.get("SUMMARY", "") or "",
+                "file_type":    r.get("FILE_TYPE", "") or "",
+                "chunk_count":  int(r.get("CHUNK_COUNT", 0)),
+            })
+        cur.close()
+        return {"documents": docs}
+    except Exception as e:
+        return {"documents": [], "error": str(e)}
 
 @app.delete("/documents/{source_file:path}")
 async def delete_document(source_file: str):
