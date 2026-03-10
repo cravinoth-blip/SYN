@@ -63,6 +63,7 @@ def _load_private_key():
     elif os.getenv("SNOWFLAKE_PRIVATE_KEY_B64"):
         # Render/cloud: base64-encoded PEM stored as env var
         pem_data = base64.b64decode(os.getenv("SNOWFLAKE_PRIVATE_KEY_B64"))
+        pem_data = pem_data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
     else:
         # Fallback: raw PEM string in env var
         pem_data = os.getenv("SNOWFLAKE_PRIVATE_KEY", "").encode()
