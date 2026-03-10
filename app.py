@@ -521,7 +521,8 @@ async def status():
         cur.close()
         return {"status": "ok", "chunks": total, "vectors": vectors, "table": TABLE_NAME}
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        import traceback
+        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 HTML = r"""<!DOCTYPE html>

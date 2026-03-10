@@ -25,5 +25,5 @@ pydantic==2.12.5
 
 # Snowflake (ETL + vector DB setup - install for local ETL/setup runs)
 # pip install snowflake-connector-python cryptography
-cryptography==42.0.8
-snowflake-connector-python==3.12.4
+cryptography==46.0.5
+snowflake-connector-python==4.3.0
