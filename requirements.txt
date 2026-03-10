@@ -3,9 +3,6 @@ fastapi==0.135.1
 uvicorn==0.41.0
 python-multipart==0.0.22
 
-# Vector DB
-chromadb==1.5.2
-
 # AI / Embeddings
 openai==2.26.0
 
@@ -26,6 +23,7 @@ tqdm==4.67.3
 python-dotenv==1.2.2
 pydantic==2.12.5
 
-# Snowflake (ETL only - install separately for local ETL runs)
-# cryptography==46.0.5
-# snowflake-connector-python==4.3.0
+# Snowflake (ETL + vector DB setup - install for local ETL/setup runs)
+# pip install snowflake-connector-python cryptography
+cryptography==46.0.5
+snowflake-connector-python==3.12.4

@@ -7,16 +7,29 @@ services:
     plan: starter
 
     envVars:
-      - key: OPENAI_API_KEY
-        sync: false           # Set this in the Render dashboard
-      - key: CHROMA_PATH
-        value: /opt/chroma_db
-      - key: ANONYMIZED_TELEMETRY
-        value: "False"
       - key: PYTHON_VERSION
         value: "3.11"
 
-    disk:
-      name: chroma-storage
-      mountPath: /opt/chroma_db
-      sizeGB: 2
+      # OpenAI
+      - key: OPENAI_API_KEY
+        sync: false           # Set in Render dashboard
+
+      # Snowflake
+      - key: SNOWFLAKE_ACCOUNT
+        sync: false
+      - key: SNOWFLAKE_USER
+        sync: false
+      - key: SNOWFLAKE_WAREHOUSE
+        value: WH_COMMUNICATIONS__EU__DER
+      - key: SNOWFLAKE_DATABASE
+        sync: false
+      - key: SNOWFLAKE_SCHEMA
+        sync: false
+      - key: SNOWFLAKE_PRIVATE_KEY_B64
+        sync: false           # base64-encoded private_key.pem (see README)
+      - key: SNOWFLAKE_PRIVATE_KEY_PASSPHRASE
+        sync: false
+
+      # CORS — add your Render URL after first deploy, e.g. https://syneos-rag.onrender.com
+      - key: ALLOWED_ORIGINS
+        sync: false

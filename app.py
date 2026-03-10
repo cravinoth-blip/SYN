@@ -1,89 +1,139 @@
 """
-RAG Chat Application - ChatGPT-like interface backed by ChromaDB + OpenAI.
+RAG Chat Application - ChatGPT-like interface backed by Snowflake Vector DB + OpenAI.
 Features: Chat with streaming, File-in-chat reference lookup, Document Upload, Library Review.
 """
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import os, json, logging, re, tempfile, shutil
+import os, json, logging, re, tempfile, shutil, uuid
 from pathlib import Path
 from openai import OpenAI
 
-# ── Env loading ───────────────────────────────────────────────────────────────
+# ── Env loading (handles multi-line PEM key in .env) ──────────────────────────
+def _parse_env(path: Path) -> dict:
+    raw = path.read_text(encoding="utf-8")
+    env = {}
+    pem_match = re.search(
+        r'SNOWFLAKE_PRIVATE_KEY\s*=\s*"?(.*?)(SNOWFLAKE_PRIVATE_KEY_PASSPHRASE)',
+        raw, re.DOTALL,
+    )
+    if pem_match:
+        raw_pem = pem_match.group(1).strip().strip('"').strip()
+        raw_pem = re.sub(r'(-----BEGIN [^-\n]+-----)\s*\\', r'\1\n', raw_pem)
+        if "-----END" not in raw_pem:
+            m = re.search(r'-----BEGIN ([^-]+)-----', raw_pem)
+            ktype = m.group(1) if m else "ENCRYPTED PRIVATE KEY"
+            raw_pem = raw_pem.rstrip() + f"\n-----END {ktype}-----\n"
+        env["SNOWFLAKE_PRIVATE_KEY"] = raw_pem
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip()
+        if key == "SNOWFLAKE_PRIVATE_KEY" or not re.match(r'^[A-Z_]+$', key):
+            continue
+        env[key] = val.strip().strip('"')
+    return env
+
 _env_path = Path(__file__).parent / ".env"
 if _env_path.exists():
-    with open(_env_path, "rb") as _f:
-        for _line in _f.read().split(b"\n"):
-            _line = _line.rstrip(b"\r").decode("utf-8", errors="ignore").strip()
-            if "=" in _line and not _line.startswith('SNOWFLAKE_PRIVATE_KEY"') and not _line.startswith("#"):
-                _k, _, _v = _line.partition("=")
-                _k = _k.strip(); _v = _v.strip().strip('"')
-                if _k and _k == _k.upper() and not os.environ.get(_k):
-                    os.environ[_k] = _v
+    for _k, _v in _parse_env(_env_path).items():
+        os.environ.setdefault(_k, _v)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
-# ── ChromaDB (fully lazy import + init — chromadb has slow Rust startup) ──────
-# chromadb is NOT imported at module level; it's imported inside get_collection()
-# so the app binds to $PORT immediately and passes Render's health check.
-CHROMA_PATH     = Path(os.getenv("CHROMA_PATH", str(Path(__file__).parent / "chroma_db")))
-COLLECTION_NAME = "rag_docs"
-CHROMA_PATH.mkdir(parents=True, exist_ok=True)
+# ── Snowflake ──────────────────────────────────────────────────────────────────
+TABLE_NAME = "RAG_DOCUMENTS"
 
-_chroma     = None
-_collection = None
+_sf_conn = None
 
-def get_collection():
-    global _chroma, _collection
-    if _chroma is None:
-        import chromadb as _chromadb                                    # lazy import
-        _chroma = _chromadb.PersistentClient(path=str(CHROMA_PATH))
-    if _collection is None:
-        from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction  # lazy
-        api_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is not set. Add it in Render > Environment.")
-        ef = OpenAIEmbeddingFunction(api_key=api_key, model_name="text-embedding-3-small")
-        _collection = _chroma.get_or_create_collection(
-            name=COLLECTION_NAME, embedding_function=ef,
-            metadata={"hnsw:space": "cosine"},
-        )
-    return _collection
+def _load_private_key():
+    import base64
+    from cryptography.hazmat.primitives.serialization import (
+        load_pem_private_key, Encoding, PrivateFormat, NoEncryption,
+    )
+    from cryptography.hazmat.backends import default_backend
+    phrase = (os.getenv("SNOWFLAKE_PRIVATE_KEY_PASSPHRASE", "") or "").encode() or None
+    pem_path = Path(__file__).parent / "private_key.pem"
+    if pem_path.exists():
+        # Local dev: use private_key.pem file directly
+        pem_data = pem_path.read_bytes()
+    elif os.getenv("SNOWFLAKE_PRIVATE_KEY_B64"):
+        # Render/cloud: base64-encoded PEM stored as env var
+        pem_data = base64.b64decode(os.getenv("SNOWFLAKE_PRIVATE_KEY_B64"))
+    else:
+        # Fallback: raw PEM string in env var
+        pem_data = os.getenv("SNOWFLAKE_PRIVATE_KEY", "").encode()
+    key = load_pem_private_key(pem_data, password=phrase, backend=default_backend())
+    return key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption())
 
-def retrieve_context(query: str, top_k: int = 8):
-    col = get_collection()
-    n   = min(top_k, col.count() or 1)
-    res = col.query(query_texts=[query], n_results=n,
-                    include=["documents", "metadatas", "distances"])
+def get_sf_conn():
+    global _sf_conn
+    import snowflake.connector
+    # Ping existing connection
+    if _sf_conn is not None:
+        try:
+            _sf_conn.cursor().execute("SELECT 1")
+            return _sf_conn
+        except Exception:
+            _sf_conn = None
+    _sf_conn = snowflake.connector.connect(
+        account=os.getenv("SNOWFLAKE_ACCOUNT"),
+        user=os.getenv("SNOWFLAKE_USER"),
+        private_key=_load_private_key(),
+        warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
+        database=os.getenv("SNOWFLAKE_DATABASE"),
+        schema=os.getenv("SNOWFLAKE_SCHEMA"),
+    )
+    _sf_conn.cursor().execute(f"USE WAREHOUSE {os.getenv('SNOWFLAKE_WAREHOUSE', 'WH_COMMUNICATIONS__EU__DER')}")
+    return _sf_conn
+
+def retrieve_context(query: str, top_k: int = 8) -> list[dict]:
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    resp = client.embeddings.create(input=[query], model="text-embedding-3-small")
+    embedding_json = json.dumps(resp.data[0].embedding)
+
+    conn = get_sf_conn()
+    cur = conn.cursor()
+    cur.execute(f"""
+        SELECT ID, SOURCE_FILE, TITLE, AUTHORS, PUBLISHED, DOI,
+               PAGE_REFERENCE, TEXT, SUMMARY,
+               VECTOR_COSINE_SIMILARITY(
+                   EMBEDDING_VECTOR,
+                   PARSE_JSON(%s)::VECTOR(FLOAT, 1536)
+               ) AS SCORE
+        FROM {TABLE_NAME}
+        WHERE EMBEDDING_VECTOR IS NOT NULL
+        ORDER BY SCORE DESC
+        LIMIT %s
+    """, (embedding_json, top_k))
+    cols = [d[0] for d in cur.description]
     out = []
-    for cid, doc, meta, dist in zip(res["ids"][0], res["documents"][0],
-                                     res["metadatas"][0], res["distances"][0]):
+    for row in cur.fetchall():
+        r = dict(zip(cols, row))
         out.append({
-            "id":             cid,
-            "text":           doc,
-            "similarity":     round(1.0 - dist, 4),
-            "source_file":    meta.get("source_file", ""),
-            "title":          meta.get("title", ""),
-            "authors":        meta.get("authors", ""),
-            "published":      meta.get("published", ""),
-            "doi":            meta.get("doi", ""),
-            "page_reference": meta.get("page_reference", ""),
-            "summary":        meta.get("summary", ""),
+            "id":             str(r.get("ID", "")),
+            "text":           r.get("TEXT", "") or "",
+            "similarity":     round(float(r.get("SCORE", 0) or 0), 4),
+            "source_file":    r.get("SOURCE_FILE", "") or "",
+            "title":          r.get("TITLE", "") or "",
+            "authors":        r.get("AUTHORS", "") or "",
+            "published":      str(r.get("PUBLISHED", "")) if r.get("PUBLISHED") else "",
+            "doi":            r.get("DOI", "") or "",
+            "page_reference": r.get("PAGE_REFERENCE", "") or "",
+            "summary":        r.get("SUMMARY", "") or "",
         })
+    cur.close()
     return out
 
 # ── FastAPI ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="RAG Chat")
 logging.basicConfig(level=logging.WARNING)
 
-# ── CORS — allow Vercel frontend + localhost dev ───────────────────────────────
-_allowed_origins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-]
-_extra = os.getenv("ALLOWED_ORIGINS", "")   # comma-separated, set in Render dashboard
+_allowed_origins = ["http://localhost:5173", "http://localhost:3000"]
+_extra = os.getenv("ALLOWED_ORIGINS", "")
 if _extra:
     _allowed_origins.extend([o.strip() for o in _extra.split(",") if o.strip()])
 
@@ -131,7 +181,7 @@ async def chat_stream(req: ChatRequest):
         yield "data: " + json.dumps({"type": "sources", "sources": sources}) + "\n\n"
         try:
             client = OpenAI(api_key=OPENAI_API_KEY)
-            stream  = client.chat.completions.create(
+            stream = client.chat.completions.create(
                 model="gpt-4o-mini", messages=messages, stream=True,
                 temperature=0.2, max_tokens=1500,
             )
@@ -177,7 +227,6 @@ async def chat_analyze(
         try:
             tmp_path.write_bytes(contents)
 
-            # Extract text
             document = etl.extract_file(tmp_path)
             if not document or not document.get("text_data"):
                 yield _sse("error", message="Could not extract text from file.")
@@ -187,23 +236,18 @@ async def chat_analyze(
                 d["text"] for d in document["text_data"]
             )
 
-            # Find DOIs in the uploaded document
             doi_pattern = r'\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+\b'
             dois_found  = list(set(re.findall(doi_pattern, full_text)))[:8]
 
-            # Query ChromaDB with document text
-            query_text = full_text[:4000]
-            sources    = retrieve_context(query_text, top_k=top_k)
-            seen_ids   = {s["id"] for s in sources}
+            sources  = retrieve_context(full_text[:4000], top_k=top_k)
+            seen_ids = {s["id"] for s in sources}
 
-            # Additional targeted searches for each DOI found
             for doi in dois_found:
                 for s in retrieve_context(doi, top_k=3):
                     if s["id"] not in seen_ids:
                         sources.append(s)
                         seen_ids.add(s["id"])
 
-            # Also search using the user's message if provided
             if message.strip():
                 for s in retrieve_context(message, top_k=6):
                     if s["id"] not in seen_ids:
@@ -212,8 +256,7 @@ async def chat_analyze(
 
             yield _sse("sources", sources=sources)
 
-            # Build system prompt
-            doc_preview = full_text[:8000]
+            doc_preview   = full_text[:8000]
             context_parts = []
             for i, s in enumerate(sources[:15]):
                 label = s["title"] or s["source_file"] or f"Source {i+1}"
@@ -240,7 +283,7 @@ DATABASE SOURCES (from the knowledge base):
 {context_text}"""
 
             hist     = json.loads(history)
-            user_msg = message.strip() or f"Analyse the references in this document and match them to the database."
+            user_msg = message.strip() or "Analyse the references in this document and match them to the database."
             messages_list = [{"role": "system", "content": system}]
             for h in hist[-8:]:
                 messages_list.append({"role": h["role"], "content": h["content"]})
@@ -269,7 +312,7 @@ DATABASE SOURCES (from the knowledge base):
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
-# ── Upload endpoint ───────────────────────────────────────────────────────────
+# ── Upload endpoint (insert into Snowflake) ───────────────────────────────────
 @app.post("/upload/stream")
 async def upload_stream(file: UploadFile = File(...)):
     import etl_local as etl
@@ -277,6 +320,15 @@ async def upload_stream(file: UploadFile = File(...)):
     orig_name = file.filename or "upload"
     suffix    = Path(orig_name).suffix.lower()
     contents  = await file.read()
+
+    INSERT_SQL = f"""
+        INSERT INTO {TABLE_NAME}
+            (ID, SOURCE_FILE, CHUNK_INDEX, CHUNK_PREVIEW, TEXT, PAGES,
+             CITATION_COUNT, DOI, TITLE, AUTHORS, PUBLISHED, CITATION,
+             PAGE_REFERENCE, SAS_URL, IS_TABLE, FILE_TYPE, SUMMARY, EMBEDDING_VECTOR)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                PARSE_JSON(%s)::VECTOR(FLOAT, 1536))
+    """
 
     def generate():
         if suffix not in ALLOWED_EXTS:
@@ -320,9 +372,8 @@ async def upload_stream(file: UploadFile = File(...)):
             yield _sse("progress", step="summary", message="Generating summary...", pct=35)
             summary = etl.generate_summary(client, full_text)
 
-            col          = get_collection()
-            existing_ids = set(col.get(include=[])["ids"])
-            all_chunks   = []
+            # Build chunk list
+            all_chunks = []
             for page_data in document["text_data"]:
                 text = page_data.get("text", "").strip()
                 if not text:
@@ -333,46 +384,63 @@ async def upload_stream(file: UploadFile = File(...)):
                         all_chunks.append((cid, chunk, page_data))
 
             yield _sse("progress", step="embed",
-                       message=f"Embedding {len(all_chunks)} chunks into ChromaDB...", pct=40)
+                       message=f"Embedding {len(all_chunks)} chunks into Snowflake...", pct=40)
 
-            meta_base = {
-                "source_file":    orig_name,
-                "title":          (final_title or "")[:500],
-                "authors":        (meta_crossref.get("authors") or "")[:500],
-                "published":      (meta_crossref.get("published") or ""),
-                "doi":            (meta_crossref.get("doi") or doi or ""),
-                "citation":       (meta_crossref.get("Citation") or "")[:1000],
-                "citation_count": meta_crossref.get("citation_count", 0),
-                "summary":        (summary or "")[:1000],
-                "file_type":      suffix.replace(".", ""),
-            }
+            conn = get_sf_conn()
+            cur  = conn.cursor()
+
+            # Check which IDs already exist
+            cur.execute(
+                f"SELECT ID FROM {TABLE_NAME} WHERE SOURCE_FILE = %s",
+                (orig_name,)
+            )
+            existing_ids = {row[0] for row in cur.fetchall()}
+
+            published_val = meta_crossref.get("published") or None
+            if published_val in ("Not found", "n/a", ""):
+                published_val = None
 
             added = skipped = 0
-            BATCH = 50
             total = len(all_chunks)
 
-            for batch_start in range(0, total, BATCH):
-                batch = all_chunks[batch_start : batch_start + BATCH]
-                ids, docs, metas = [], [], []
-                for idx, (cid, chunk, page_data) in enumerate(batch):
-                    if cid in existing_ids:
-                        skipped += 1
-                        continue
-                    ids.append(cid)
-                    docs.append(chunk)
-                    metas.append({
-                        **meta_base,
-                        "chunk_index":    batch_start + idx,
-                        "page_reference": f"p. {page_data.get('page_number', 1)}",
-                        "is_table":       str(page_data.get("is_table", False)),
-                    })
-                    existing_ids.add(cid)
-                    added += 1
-                if ids:
-                    col.add(ids=ids, documents=docs, metadatas=metas)
-                pct = 40 + round((batch_start + BATCH) / max(total, 1) * 58)
+            for idx, (cid, chunk, page_data) in enumerate(all_chunks):
+                if cid in existing_ids:
+                    skipped += 1
+                    continue
+
+                embedding_resp = client.embeddings.create(input=[chunk], model="text-embedding-3-small")
+                embedding_json = json.dumps(embedding_resp.data[0].embedding)
+
+                cur.execute(INSERT_SQL, (
+                    cid,
+                    orig_name,
+                    idx,
+                    chunk[:200],
+                    chunk,
+                    json.dumps([str(page_data.get("page_number", 1))]),
+                    meta_crossref.get("citation_count", 0) or 0,
+                    meta_crossref.get("doi") or doi or "",
+                    (final_title or "")[:1000],
+                    (meta_crossref.get("authors") or "")[:1000],
+                    published_val,
+                    (meta_crossref.get("Citation") or "")[:2000],
+                    f"p. {page_data.get('page_number', 1)}",
+                    "",   # SAS_URL
+                    bool(page_data.get("is_table", False)),
+                    suffix.replace(".", "").lower(),
+                    (summary or "")[:2000],
+                    embedding_json,
+                ))
+                added += 1
+                pct = 40 + round((idx + 1) / max(total, 1) * 58)
                 yield _sse("progress", step="embed",
-                           message=f"Embedding... {min(pct, 98)}%", pct=min(pct, 98))
+                           message=f"Embedding chunk {idx+1}/{total}...", pct=min(pct, 98))
+
+            conn.commit()
+
+            cur.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}")
+            total_chunks = cur.fetchone()[0]
+            cur.close()
 
             yield _sse("done",
                        message=f"Done! Added {added} chunks ({skipped} already existed).",
@@ -380,7 +448,7 @@ async def upload_stream(file: UploadFile = File(...)):
                        summary=(summary or "")[:300],
                        chunks_added=added,
                        chunks_skipped=skipped,
-                       total_chunks=col.count())
+                       total_chunks=total_chunks)
 
         except Exception as e:
             import traceback
@@ -396,43 +464,59 @@ async def upload_stream(file: UploadFile = File(...)):
 # ── Library endpoints ─────────────────────────────────────────────────────────
 @app.get("/documents")
 async def list_documents():
-    col    = get_collection()
-    result = col.get(include=["metadatas"])
-    docs: dict = {}
-    for meta in result["metadatas"]:
-        sf = meta.get("source_file", "")
-        if not sf:
-            continue
-        if sf not in docs:
-            docs[sf] = {
-                "source_file":  sf,
-                "title":        meta.get("title", ""),
-                "authors":      meta.get("authors", ""),
-                "published":    meta.get("published", ""),
-                "doi":          meta.get("doi", ""),
-                "summary":      meta.get("summary", ""),
-                "file_type":    meta.get("file_type", ""),
-                "chunk_count":  0,
-            }
-        docs[sf]["chunk_count"] += 1
-    return {"documents": sorted(docs.values(), key=lambda x: x["source_file"].lower())}
+    conn = get_sf_conn()
+    cur  = conn.cursor()
+    cur.execute(f"""
+        SELECT SOURCE_FILE, TITLE, AUTHORS, PUBLISHED, DOI, SUMMARY, FILE_TYPE,
+               COUNT(*) AS CHUNK_COUNT
+        FROM {TABLE_NAME}
+        GROUP BY SOURCE_FILE, TITLE, AUTHORS, PUBLISHED, DOI, SUMMARY, FILE_TYPE
+        ORDER BY SOURCE_FILE
+    """)
+    cols = [d[0] for d in cur.description]
+    docs = []
+    for row in cur.fetchall():
+        r = dict(zip(cols, row))
+        docs.append({
+            "source_file":  r.get("SOURCE_FILE", ""),
+            "title":        r.get("TITLE", "") or "",
+            "authors":      r.get("AUTHORS", "") or "",
+            "published":    str(r.get("PUBLISHED", "")) if r.get("PUBLISHED") else "",
+            "doi":          r.get("DOI", "") or "",
+            "summary":      r.get("SUMMARY", "") or "",
+            "file_type":    r.get("FILE_TYPE", "") or "",
+            "chunk_count":  int(r.get("CHUNK_COUNT", 0)),
+        })
+    cur.close()
+    return {"documents": docs}
 
 @app.delete("/documents/{source_file:path}")
 async def delete_document(source_file: str):
-    col    = get_collection()
-    result = col.get(where={"source_file": source_file}, include=[])
-    ids    = result["ids"]
-    if not ids:
+    conn = get_sf_conn()
+    cur  = conn.cursor()
+    cur.execute(f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE SOURCE_FILE = %s", (source_file,))
+    count = cur.fetchone()[0]
+    if count == 0:
         raise HTTPException(status_code=404, detail="Document not found in index.")
-    col.delete(ids=ids)
-    return {"deleted": len(ids), "source_file": source_file, "total_chunks": col.count()}
+    cur.execute(f"DELETE FROM {TABLE_NAME} WHERE SOURCE_FILE = %s", (source_file,))
+    conn.commit()
+    cur.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}")
+    total = cur.fetchone()[0]
+    cur.close()
+    return {"deleted": count, "source_file": source_file, "total_chunks": total}
 
 # ── Status ────────────────────────────────────────────────────────────────────
 @app.get("/status")
 async def status():
     try:
-        col = get_collection()
-        return {"status": "ok", "chunks": col.count(), "collection": COLLECTION_NAME}
+        conn = get_sf_conn()
+        cur  = conn.cursor()
+        cur.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}")
+        total = cur.fetchone()[0]
+        cur.execute(f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE EMBEDDING_VECTOR IS NOT NULL")
+        vectors = cur.fetchone()[0]
+        cur.close()
+        return {"status": "ok", "chunks": total, "vectors": vectors, "table": TABLE_NAME}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -708,7 +792,7 @@ table.lib td{padding:10px 14px;vertical-align:top}
     <div id="history"></div>
   </div>
   <div class="sidebar-foot">
-    ChromaDB &middot; gpt-4o-mini &middot; text-embedding-3-small
+    Snowflake &middot; gpt-4o-mini &middot; text-embedding-3-small
     <div id="db-status"><span class="dot" id="status-dot"></span><span id="status-txt">checking&hellip;</span></div>
   </div>
 </div>

@@ -78,11 +78,11 @@ CSV_FILENAME = "embeddings.csv"
 OUTPUT_FOLDER.mkdir(exist_ok=True)
 
 # Snowflake
-TABLE_NAME = "RAG_TEST"
+TABLE_NAME = "RAG_DOCUMENTS"
 UPLOAD_MODE = "replace"       # "replace", "append", or "upsert"
 RECREATE_TABLE = True
 UPLOAD_TO_SNOWFLAKE = True
-GENERATE_NEW_CSV = True
+GENERATE_NEW_CSV = False
 
 # Chunking
 CHUNK_SIZE = 1500
@@ -119,6 +119,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 def get_snowflake_connection():
     try:
         ctx = sf.connect(**SNOW_CONFIG)
+        ctx.cursor().execute("USE WAREHOUSE WH_COMMUNICATIONS__EU__DER")
         print("Connected to Snowflake successfully")
         return ctx
     except sf.errors.Error as e:
@@ -561,6 +562,10 @@ def upload_csv_to_snowflake(csv_file_path):
         if UPLOAD_MODE == "replace":
             cur.execute(f"TRUNCATE TABLE {TABLE_NAME}")
             print(f"Cleared {TABLE_NAME}")
+
+        # Ensure warehouse is active before COPY INTO (write_pandas uses new internal cursors)
+        warehouse = SNOW_CONFIG.get('warehouse') or 'WH_COMMUNICATIONS__EU__DER'
+        cur.execute(f"USE WAREHOUSE {warehouse}")
 
         # Upload data
         success, nchunks, nrows, _ = write_pandas(
