@@ -468,7 +468,7 @@ function goToFrame(idx) {
   _pollTimer = setInterval(() => {
     refreshPeerResponses(frameId);
     refreshNotes(frameId);
-  }, 15000);
+  }, 1000);
   refreshPeerResponses(frameId);
 
   document.getElementById('adboard-root').scrollIntoView({behavior:'smooth', block:'start'});
@@ -491,7 +491,7 @@ function finishAdboard() {
 function onFieldInput(ta) {
   const key = ta.dataset.frame + '_' + ta.dataset.field;
   clearTimeout(_saveTimers[key]);
-  _saveTimers[key] = setTimeout(() => saveField(ta), 800);
+  _saveTimers[key] = setTimeout(() => saveField(ta), 500);
 }
 
 async function saveField(ta) {
