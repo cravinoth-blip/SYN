@@ -65,8 +65,20 @@ def _load_private_key():
         pem_data = base64.b64decode(os.getenv("SNOWFLAKE_PRIVATE_KEY_B64"))
         pem_data = pem_data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
     else:
-        # Fallback: raw PEM string in env var
-        pem_data = os.getenv("SNOWFLAKE_PRIVATE_KEY", "").encode()
+        # Fallback: raw PEM string in env var (may have lost newlines when set in Render)
+        raw = os.getenv("SNOWFLAKE_PRIVATE_KEY", "").strip()
+        # Normalise any existing line endings
+        raw = raw.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
+        # If newlines were stripped, reconstruct PEM block from bare base64 body
+        if "\n" not in raw or raw.count("\n") < 3:
+            import re as _re
+            body = _re.sub(r"-----[^-]+-----", "", raw).replace(" ", "").strip()
+            raw = (
+                "-----BEGIN PRIVATE KEY-----\n"
+                + "\n".join(body[i:i+64] for i in range(0, len(body), 64))
+                + "\n-----END PRIVATE KEY-----\n"
+            )
+        pem_data = raw.encode()
     key = load_pem_private_key(pem_data, password=phrase, backend=default_backend())
     return key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption())
 
