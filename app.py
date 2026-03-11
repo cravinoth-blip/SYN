@@ -133,7 +133,10 @@ def retrieve_context(query: str, top_k: int = 8) -> list[dict]:
 app = FastAPI(title="RAG Chat")
 logging.basicConfig(level=logging.WARNING)
 
-_allowed_origins = ["http://localhost:5173", "http://localhost:3000"]
+_allowed_origins = [
+    "http://localhost:5173", "http://localhost:3000",
+    "https://chat.openai.com", "https://chatgpt.com",
+]
 _extra = os.getenv("ALLOWED_ORIGINS", "")
 if _extra:
     _allowed_origins.extend([o.strip() for o in _extra.split(",") if o.strip()])
@@ -508,6 +511,33 @@ async def delete_document(source_file: str):
     total = cur.fetchone()[0]
     cur.close()
     return {"deleted": count, "source_file": source_file, "total_chunks": total}
+
+# ── Custom GPT Action endpoint ────────────────────────────────────────────────
+class _QueryRequest(BaseModel):
+    query_text: str
+    top_k: int = 15
+
+@app.post("/query")
+async def query_endpoint(req: _QueryRequest):
+    """Standard JSON endpoint for ChatGPT Custom GPT Actions."""
+    sources = retrieve_context(req.query_text, req.top_k)
+    context_parts = []
+    for i, s in enumerate(sources):
+        label = s["title"] or s["source_file"] or f"Document {i+1}"
+        context_parts.append(f"[Source {i+1}: {label}]\n{s['text'][:1200]}")
+    context_text = "\n\n---\n\n".join(context_parts)
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT.format(context=context_text)},
+            {"role": "user", "content": req.query_text},
+        ],
+        temperature=0.2,
+        max_tokens=1500,
+    )
+    answer = resp.choices[0].message.content or ""
+    return {"answer": answer, "context": sources}
 
 # ── Status ────────────────────────────────────────────────────────────────────
 @app.get("/status")
