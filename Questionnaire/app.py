@@ -355,6 +355,24 @@ def get_responses(frame_id):
     return Response(json.dumps({r['field_id']: r['content'] for r in rows}), mimetype='application/json')
 
 
+@app.route('/api/responses/<frame_id>/all')
+def get_all_responses(frame_id):
+    """Return all participants' non-empty responses for a frame, grouped by field_id."""
+    db = get_db()
+    rows = db.query(
+        "SELECT field_id, author, content, updated_at FROM frame_responses WHERE frame_id=? AND content != '' ORDER BY field_id, author",
+        (frame_id,)
+    )
+    result = {}
+    for row in rows:
+        fid = row['field_id']
+        if fid not in result:
+            result[fid] = []
+        result[fid].append({'author': row['author'], 'content': row['content']})
+    from flask import Response
+    return Response(json.dumps(result, default=str), mimetype='application/json')
+
+
 @app.route('/api/responses', methods=['POST'])
 def save_response():
     data = request.get_json()

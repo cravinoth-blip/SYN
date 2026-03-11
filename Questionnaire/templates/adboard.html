@@ -394,8 +394,8 @@
 
 {% block scripts %}
 <script>
-const FRAMES     = ['agenda','session1','session2','session3','session4'];
-const TOTAL      = FRAMES.length;
+const FRAMES      = ['agenda','session1','session2','session3','session4'];
+const TOTAL       = FRAMES.length;
 const notesLoaded = {};
 const respLoaded  = {};
 
@@ -404,6 +404,7 @@ let _selectedColor = '#FFE066';
 let _activeFrame   = null;
 let _userName      = null;
 let _saveTimers    = {};
+let _pollTimer     = null;
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -414,7 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('gate-name-input').focus();
   }
 
-  // Wire up all textareas for auto-save
   document.querySelectorAll('.field-textarea').forEach(ta => {
     ta.addEventListener('input', () => onFieldInput(ta));
   });
@@ -463,6 +463,14 @@ function goToFrame(idx) {
   if (!notesLoaded[frameId]) { notesLoaded[frameId] = true; loadNotes(frameId); }
   if (!respLoaded[frameId])  { respLoaded[frameId]  = true; loadResponses(frameId); }
 
+  // Start polling peer responses for this frame
+  clearInterval(_pollTimer);
+  _pollTimer = setInterval(() => {
+    refreshPeerResponses(frameId);
+    refreshNotes(frameId);
+  }, 15000);
+  refreshPeerResponses(frameId);
+
   document.getElementById('adboard-root').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
@@ -470,6 +478,7 @@ function nextFrame() { if (_currentIdx < TOTAL - 1) goToFrame(_currentIdx + 1); 
 function prevFrame() { if (_currentIdx > 0)          goToFrame(_currentIdx - 1); }
 
 function finishAdboard() {
+  clearInterval(_pollTimer);
   document.getElementById('adboard-root').innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px;">
       <div style="font-size:3rem;margin-bottom:16px;">✅</div>
@@ -515,6 +524,46 @@ async function loadResponses(frameId) {
   document.querySelectorAll(`.field-textarea[data-frame="${frameId}"]`).forEach(ta => {
     if (data[ta.dataset.field] !== undefined) ta.value = data[ta.dataset.field];
   });
+}
+
+// ── Peer responses (collaborative view) ───────────────────────────────────
+async function refreshPeerResponses(frameId) {
+  if (!_userName) return;
+  try {
+    const data = await (await fetch('/api/responses/' + frameId + '/all')).json();
+    document.querySelectorAll(`.field-textarea[data-frame="${frameId}"]`).forEach(ta => {
+      const fieldId = ta.dataset.field;
+      const peers = (data[fieldId] || []).filter(r => r.author !== _userName && r.content.trim());
+      const containerId = 'peers-' + frameId + '-' + fieldId;
+      let container = document.getElementById(containerId);
+      if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.className = 'peer-responses';
+        ta.closest('.field-group').appendChild(container);
+      }
+      if (peers.length === 0) { container.innerHTML = ''; return; }
+      container.innerHTML = '<div class="peer-header">Beiträge anderer Teilnehmer:innen</div>' +
+        peers.map(p =>
+          `<div class="peer-card">
+            <div class="peer-author">${escHtml(p.author)}</div>
+            <div class="peer-content">${escHtml(p.content)}</div>
+          </div>`
+        ).join('');
+    });
+  } catch(e) { /* silent – no network */ }
+}
+
+// ── Sticky notes (live refresh) ────────────────────────────────────────────
+async function refreshNotes(frameId) {
+  try {
+    const notes = await (await fetch('/api/notes/' + frameId)).json();
+    const canvas = document.getElementById('notes-' + frameId);
+    const existingIds = new Set([...canvas.querySelectorAll('.sticky-note')].map(el => el.dataset.id));
+    notes.forEach(n => {
+      if (!existingIds.has(String(n.id))) renderNote(n, canvas);
+    });
+  } catch(e) { /* silent */ }
 }
 
 // ── Sticky notes modal ─────────────────────────────────────────────────────
