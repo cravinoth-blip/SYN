@@ -358,11 +358,18 @@ def get_responses(frame_id):
 @app.route('/api/responses/<frame_id>/all')
 def get_all_responses(frame_id):
     """Return all participants' non-empty responses for a frame, grouped by field_id."""
+    try:
+        init_db()  # ensure tables exist (safe: uses CREATE TABLE IF NOT EXISTS)
+    except Exception:
+        pass
     db = get_db()
-    rows = db.query(
-        "SELECT field_id, author, content, updated_at FROM frame_responses WHERE frame_id=? AND content != '' ORDER BY field_id, author",
-        (frame_id,)
-    )
+    try:
+        rows = db.query(
+            "SELECT field_id, author, content, updated_at FROM frame_responses WHERE frame_id=? AND content != '' ORDER BY field_id, author",
+            (frame_id,)
+        )
+    except Exception:
+        rows = []
     result = {}
     for row in rows:
         fid = row['field_id']
@@ -376,6 +383,10 @@ def get_all_responses(frame_id):
 @app.route('/api/responses', methods=['POST'])
 def save_response():
     data = request.get_json()
+    try:
+        init_db()
+    except Exception:
+        pass
     db = get_db()
     if USE_POSTGRES:
         db.execute('''
@@ -395,6 +406,10 @@ def save_response():
 
 @app.route('/api/notes/<frame_id>')
 def get_notes(frame_id):
+    try:
+        init_db()
+    except Exception:
+        pass
     db = get_db()
     notes = db.query(
         'SELECT * FROM sticky_notes WHERE frame_id = ? ORDER BY created_at', (frame_id,)

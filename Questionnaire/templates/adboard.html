@@ -540,7 +540,9 @@ async function refreshPeerResponses(frameId) {
         container = document.createElement('div');
         container.id = containerId;
         container.className = 'peer-responses';
-        ta.closest('.field-group').appendChild(container);
+        // textareas in session1 are inside .dq-inner, not .field-group
+        const parent = ta.closest('.field-group') || ta.parentElement;
+        parent.appendChild(container);
       }
       if (peers.length === 0) { container.innerHTML = ''; return; }
       container.innerHTML = '<div class="peer-header">Beiträge anderer Teilnehmer:innen</div>' +
