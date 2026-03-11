@@ -949,6 +949,39 @@ def _build_adboard_excel(ab_responses, ab_notes):
     return buf
 
 
+@app.route('/admin/init-db')
+def admin_init_db():
+    """Force-create all DB tables and report the result."""
+    import traceback
+    results = []
+    try:
+        init_db()
+        results.append('init_db() OK')
+    except Exception as e:
+        results.append(f'init_db() ERROR: {e}\n{traceback.format_exc()}')
+
+    # Check which tables exist
+    try:
+        db = get_db()
+        if USE_POSTGRES:
+            tables = db.query(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
+            )
+            results.append('Tables in public schema: ' + ', '.join(r['table_name'] for r in tables))
+            for tbl in ('frame_responses', 'sticky_notes', 'survey_responses'):
+                try:
+                    count = db.scalar(f'SELECT COUNT(*) FROM {tbl}')
+                    results.append(f'  {tbl}: {count} rows')
+                except Exception as e:
+                    results.append(f'  {tbl}: ERROR – {e}')
+        else:
+            results.append('Using SQLite (not Postgres)')
+    except Exception as e:
+        results.append(f'Table check ERROR: {e}')
+
+    return '<pre style="font-family:monospace;padding:20px">' + '\n'.join(results) + '</pre>'
+
+
 @app.route('/admin/adboard/export/excel')
 def export_adboard_excel():
     db = get_db()
