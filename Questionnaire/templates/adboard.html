@@ -544,14 +544,16 @@ async function refreshPeerResponses(frameId) {
         const parent = ta.closest('.field-group') || ta.parentElement;
         parent.appendChild(container);
       }
-      if (peers.length === 0) { container.innerHTML = ''; return; }
-      container.innerHTML = '<div class="peer-header">Beiträge anderer Teilnehmer:innen</div>' +
+      const newHtml = peers.length === 0 ? '' :
+        '<div class="peer-header">Beiträge anderer Teilnehmer:innen</div>' +
         peers.map(p =>
           `<div class="peer-card">
             <div class="peer-author">${escHtml(p.author)}</div>
             <div class="peer-content">${escHtml(p.content)}</div>
           </div>`
         ).join('');
+      // Only update DOM if content changed – prevents flicker on every poll
+      if (container.innerHTML !== newHtml) container.innerHTML = newHtml;
     });
   } catch(e) { /* silent – no network */ }
 }
