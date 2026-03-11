@@ -1,51 +1,172 @@
 {% extends 'base.html' %}
 {% block title %}Admin – Alle Antworten{% endblock %}
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
-  <div>
-    <div class="page-title">Admin-Übersicht</div>
-    <div class="page-subtitle">Alle eingegangenen Umfrageantworten</div>
+
+<!-- ══ Admin Tab Bar ══ -->
+<div class="admin-tabs">
+  <button class="admin-tab active" onclick="showAdminTab('questionnaire', this)">
+    Questionnaire <span class="badge" style="margin-left:6px">{{ count }}</span>
+  </button>
+  <button class="admin-tab" onclick="showAdminTab('adboard', this)">
+    Adboard <span class="badge" style="margin-left:6px;background:#00695C">{{ ab_count }}</span>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     QUESTIONNAIRE PANEL
+══════════════════════════════════════════════ -->
+<div id="panel-questionnaire" class="admin-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+    <div>
+      <div class="page-title" style="font-size:1.2rem">Umfrageantworten</div>
+      <div class="page-subtitle">Alle eingegangenen Antworten</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      {% if count > 0 %}
+      <a href="{{ url_for('export_excel_all') }}" class="btn-secondary" style="padding:7px 16px;font-size:0.88rem;">
+        &#8659; Excel (.xlsx)
+      </a>
+      <a href="{{ url_for('export_pdf_all') }}" class="btn-secondary" style="padding:7px 16px;font-size:0.88rem;">
+        &#8659; PDF
+      </a>
+      {% endif %}
+    </div>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <span class="badge">{{ count }} Einträge</span>
-    {% if count > 0 %}
-    <a href="{{ url_for('export_excel_all') }}" class="btn-secondary" style="padding:7px 16px;font-size:0.88rem;">
-      &#8659; Excel (.xlsx)
-    </a>
-    <a href="{{ url_for('export_pdf_all') }}" class="btn-secondary" style="padding:7px 16px;font-size:0.88rem;">
-      &#8659; PDF
+
+  {% if responses %}
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="admin-table">
+      <thead>
+        <tr><th>#</th><th>Name</th><th>Eingereicht am</th><th>Details</th></tr>
+      </thead>
+      <tbody>
+        {% for r in responses %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td>{{ r.respondent_name }}</td>
+          <td>{{ r.submitted_at }}</td>
+          <td><a href="{{ url_for('admin_detail', response_id=r.id) }}">Anzeigen &#8594;</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:40px;">
+    <p style="color:var(--text-mid);">Noch keine Antworten vorhanden.</p>
+    <a href="{{ url_for('index') }}" class="btn-primary" style="margin-top:16px;display:inline-block;">Zur Umfrage</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ══════════════════════════════════════════════
+     ADBOARD PANEL
+══════════════════════════════════════════════ -->
+<div id="panel-adboard" class="admin-panel" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+    <div>
+      <div class="page-title" style="font-size:1.2rem">Adboard Daten</div>
+      <div class="page-subtitle">Textantworten und Sticky Notes aller Teilnehmer:innen</div>
+    </div>
+    {% if ab_count > 0 %}
+    <a href="{{ url_for('export_adboard_excel') }}" class="btn-secondary" style="padding:7px 16px;font-size:0.88rem;background:#00695C;color:#fff;border-color:#00695C;">
+      &#8659; Adboard Excel (.xlsx)
     </a>
     {% endif %}
   </div>
+
+  {% if ab_authors %}
+
+  <!-- Per-author accordion of text responses -->
+  <div class="page-subtitle" style="margin-bottom:10px;font-weight:700;color:var(--purple-dark)">
+    Textantworten nach Teilnehmer:in
+  </div>
+
+  {% for author in ab_authors %}
+  {% set author_rows = ab_responses | selectattr('author', 'equalto', author) | list %}
+  {% if author_rows %}
+  <div class="ab-author-block">
+    <div class="ab-author-header" onclick="toggleAuthor(this)">
+      <span>{{ author }}</span>
+      <span class="ab-author-count">{{ author_rows | length }} Antwort{% if author_rows | length != 1 %}en{% endif %}</span>
+      <span class="ab-chevron">▾</span>
+    </div>
+    <div class="ab-author-body">
+      {% set ns = namespace(cur_frame='') %}
+      {% for row in author_rows %}
+        {% if row.frame_id != ns.cur_frame %}
+          {% if ns.cur_frame != '' %}</div>{% endif %}
+          {% set ns.cur_frame = row.frame_id %}
+          <div class="ab-frame-group">
+          <div class="ab-frame-label">{{ frame_labels.get(row.frame_id, row.frame_id) }}</div>
+        {% endif %}
+        {% if row.content %}
+        <div class="ab-field-row">
+          <div class="ab-field-label">{{ field_labels.get(row.field_id, row.field_id) }}</div>
+          <div class="ab-field-content">{{ row.content }}</div>
+          <div class="ab-field-ts">{{ row.updated_at }}</div>
+        </div>
+        {% endif %}
+      {% endfor %}
+      {% if ns.cur_frame != '' %}</div>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  <!-- Sticky Notes table -->
+  {% if ab_notes %}
+  <div class="page-subtitle" style="margin:24px 0 10px;font-weight:700;color:var(--purple-dark)">
+    Sticky Notes ({{ ab_notes | length }} gesamt)
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Teilnehmer:in</th>
+          <th>Frame</th>
+          <th>Notiz</th>
+          <th>Erstellt am</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for note in ab_notes %}
+        <tr>
+          <td>{{ note.author }}</td>
+          <td>{{ frame_labels.get(note.frame_id, note.frame_id) }}</td>
+          <td>
+            <span class="sn-color-dot" style="background:{{ note.color or '#FFE066' }}"></span>
+            {{ note.text }}
+          </td>
+          <td style="white-space:nowrap;font-size:0.82rem;color:var(--text-mid)">{{ note.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="card" style="text-align:center;padding:40px;">
+    <p style="color:var(--text-mid);">Noch keine Adboard-Daten vorhanden.</p>
+    <a href="{{ url_for('adboard') }}" class="btn-primary" style="margin-top:16px;display:inline-block;">Zum Adboard</a>
+  </div>
+  {% endif %}
 </div>
 
-{% if responses %}
-<div class="card" style="padding:0;overflow:hidden;">
-  <table class="admin-table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Name</th>
-        <th>Eingereicht am</th>
-        <th>Details</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in responses %}
-      <tr>
-        <td>{{ r.id }}</td>
-        <td>{{ r.respondent_name }}</td>
-        <td>{{ r.submitted_at }}</td>
-        <td><a href="{{ url_for('admin_detail', response_id=r.id) }}">Anzeigen &#8594;</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% else %}
-<div class="card" style="text-align:center;padding:40px;">
-  <p style="color:var(--text-mid);">Noch keine Antworten vorhanden.</p>
-  <a href="{{ url_for('index') }}" class="btn-primary" style="margin-top:16px;display:inline-block;">Zur Umfrage</a>
-</div>
-{% endif %}
+<script>
+function showAdminTab(name, btn) {
+  document.querySelectorAll('.admin-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).style.display = 'block';
+  btn.classList.add('active');
+}
+function toggleAuthor(header) {
+  const body = header.nextElementSibling;
+  const chevron = header.querySelector('.ab-chevron');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  chevron.textContent = open ? '▸' : '▾';
+}
+</script>
 {% endblock %}

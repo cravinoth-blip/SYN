@@ -417,6 +417,36 @@ def delete_note(note_id):
     return Response(json.dumps({'ok': True}), mimetype='application/json')
 
 
+FRAME_LABELS = {
+    'agenda':   'Agenda',
+    'session1': 'Session 1 – ERS Updates',
+    'session2': 'Session 2 – Brensocatib',
+    'session3': 'Session 3 – Motivation & Hürden',
+    'session4': 'Session 4 – CHEST-Daten',
+}
+FIELD_LABELS = {
+    'agenda_notes':          'Notizen zur Agenda',
+    's1_q1':                 'S1 – Einschätzung Leitlinien-Update',
+    's1_q2':                 'S1 – Praktischer Alltag',
+    's1_q3':                 'S1 – DPP-1 Evidenz',
+    's2_must_haves':         'S2 – Must-have Kriterien (3)',
+    's2_patient_other':      'S2 – Should-haves / Caution / Exclude',
+    's2_schulung':           'S2 – Patient:innenschulungen',
+    's2_baseline':           'S2 – Baseline-Erhebungen (Therapiestart)',
+    's2_ers_schema':         'S2 – ERS-Schema Einschätzung',
+    's2_kombination':        'S2 – Kombinationstherapien',
+    's2_monitoring':         'S2 – Verlaufskontrolle-Parameter',
+    's2_monitoring_baseline':'S2 – Baseline-Erhebungen (Monitoring)',
+    's3_motivatoren':        'S3 – Motivatoren',
+    's3_hurden':             'S3 – Hürden & Barrieren',
+    's3_loesungen':          'S3 – Lösungsansätze',
+    's4_ct_befunde':         'S4 – CT-Befunde im Alltag',
+    's4_disease_mod':        'S4 – Disease Modification',
+    's4_ct_standard':        'S4 – Standardisierte CT-Auswertung',
+    's4_open_q':             'S4 – Offene Fragen',
+}
+
+
 @app.route('/admin')
 def admin():
     db = get_db()
@@ -424,7 +454,22 @@ def admin():
         'SELECT id, respondent_name, submitted_at FROM survey_responses ORDER BY submitted_at DESC'
     )
     count = db.scalar('SELECT COUNT(*) FROM survey_responses')
-    return render_template('admin.html', responses=responses, count=count)
+
+    # Adboard data
+    ab_responses = db.query(
+        'SELECT author, frame_id, field_id, content, updated_at FROM frame_responses ORDER BY author, frame_id, field_id'
+    )
+    ab_notes = db.query(
+        'SELECT author, frame_id, text, color, created_at FROM sticky_notes ORDER BY frame_id, created_at'
+    )
+    ab_authors = sorted({r['author'] for r in ab_responses} | {n['author'] for n in ab_notes})
+    ab_count = len(ab_authors)
+
+    return render_template('admin.html',
+                           responses=responses, count=count,
+                           ab_responses=ab_responses, ab_notes=ab_notes,
+                           ab_authors=ab_authors, ab_count=ab_count,
+                           frame_labels=FRAME_LABELS, field_labels=FIELD_LABELS)
 
 
 @app.route('/admin/<int:response_id>')
@@ -813,6 +858,112 @@ def _build_pdf(responses, cases_by_id):
     doc.build(story)
     buf.seek(0)
     return buf
+
+
+# ── Adboard export ────────────────────────────────────────────────────────────
+
+def _build_adboard_excel(ab_responses, ab_notes):
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    TEAL   = 'FF00695C'; LIGHT  = 'FFE0F2F1'; PURPLE = 'FF5C2D91'; LPURP  = 'FFEDE5FA'
+    WHITE  = 'FFFFFFFF'
+    thin   = Side(style='thin', color='FFB2DFDB')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    wb     = openpyxl.Workbook()
+
+    # ── Sheet 1: Frame Responses ──
+    ws1 = wb.active
+    ws1.title = 'Adboard Antworten'
+    hf   = Font(bold=True, color=WHITE, size=10)
+    hfill = PatternFill('solid', fgColor=TEAL)
+    headers1 = ['Teilnehmer:in', 'Frame', 'Frage / Feld', 'Antwort', 'Gespeichert am']
+    for ci, h in enumerate(headers1, 1):
+        c = ws1.cell(row=1, column=ci, value=h)
+        c.font = hf; c.fill = hfill
+        c.alignment = Alignment(wrap_text=True, vertical='center')
+        c.border = border
+    ws1.row_dimensions[1].height = 28
+
+    for ri, row in enumerate(ab_responses, 2):
+        fill = PatternFill('solid', fgColor=LIGHT if ri % 2 == 0 else WHITE)
+        vals = [
+            row.get('author', ''),
+            FRAME_LABELS.get(row.get('frame_id', ''), row.get('frame_id', '')),
+            FIELD_LABELS.get(row.get('field_id', ''), row.get('field_id', '')),
+            row.get('content', ''),
+            str(row.get('updated_at', '')),
+        ]
+        for ci, val in enumerate(vals, 1):
+            c = ws1.cell(row=ri, column=ci, value=val)
+            c.fill = fill
+            c.alignment = Alignment(wrap_text=True, vertical='top')
+            c.border = border
+
+    ws1.column_dimensions['A'].width = 26
+    ws1.column_dimensions['B'].width = 28
+    ws1.column_dimensions['C'].width = 36
+    ws1.column_dimensions['D'].width = 60
+    ws1.column_dimensions['E'].width = 22
+    ws1.freeze_panes = 'A2'
+
+    # ── Sheet 2: Sticky Notes ──
+    ws2 = wb.create_sheet('Sticky Notes')
+    hfill2 = PatternFill('solid', fgColor=PURPLE)
+    headers2 = ['Teilnehmer:in', 'Frame', 'Notiz', 'Farbe', 'Erstellt am']
+    for ci, h in enumerate(headers2, 1):
+        c = ws2.cell(row=1, column=ci, value=h)
+        c.font = Font(bold=True, color=WHITE, size=10)
+        c.fill = hfill2
+        c.alignment = Alignment(wrap_text=True, vertical='center')
+        c.border = Border(left=Side(style='thin', color='FFD0C2E8'),
+                          right=Side(style='thin', color='FFD0C2E8'),
+                          top=Side(style='thin', color='FFD0C2E8'),
+                          bottom=Side(style='thin', color='FFD0C2E8'))
+    ws2.row_dimensions[1].height = 28
+
+    for ri, note in enumerate(ab_notes, 2):
+        fill = PatternFill('solid', fgColor=LPURP if ri % 2 == 0 else WHITE)
+        vals = [
+            note.get('author', ''),
+            FRAME_LABELS.get(note.get('frame_id', ''), note.get('frame_id', '')),
+            note.get('text', ''),
+            note.get('color', ''),
+            str(note.get('created_at', '')),
+        ]
+        for ci, val in enumerate(vals, 1):
+            c = ws2.cell(row=ri, column=ci, value=val)
+            c.fill = fill
+            c.alignment = Alignment(wrap_text=True, vertical='top')
+    ws2.column_dimensions['A'].width = 26
+    ws2.column_dimensions['B'].width = 28
+    ws2.column_dimensions['C'].width = 60
+    ws2.column_dimensions['D'].width = 12
+    ws2.column_dimensions['E'].width = 22
+    ws2.freeze_panes = 'A2'
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+@app.route('/admin/adboard/export/excel')
+def export_adboard_excel():
+    db = get_db()
+    ab_responses = db.query(
+        'SELECT author, frame_id, field_id, content, updated_at FROM frame_responses ORDER BY author, frame_id, field_id'
+    )
+    ab_notes = db.query(
+        'SELECT author, frame_id, text, color, created_at FROM sticky_notes ORDER BY frame_id, created_at'
+    )
+    buf = _build_adboard_excel(ab_responses, ab_notes)
+    ts  = datetime.now().strftime('%Y%m%d_%H%M')
+    return send_file(buf,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name=f'AdBoard_Daten_{ts}.xlsx')
 
 
 # ── Export routes ─────────────────────────────────────────────────────────────
