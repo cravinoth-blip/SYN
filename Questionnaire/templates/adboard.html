@@ -450,8 +450,13 @@ function goToFrame(idx) {
   document.getElementById('btn-prev').disabled = idx === 0;
   const nextBtn = document.getElementById('btn-next');
   nextBtn.disabled = false;
-  nextBtn.textContent = idx === TOTAL - 1 ? 'Fertig ✓' : 'Weiter →';
-  if (idx === TOTAL - 1) nextBtn.disabled = true;
+  if (idx === TOTAL - 1) {
+    nextBtn.textContent = 'Fertig ✓';
+    nextBtn.onclick = finishAdboard;
+  } else {
+    nextBtn.textContent = 'Weiter →';
+    nextBtn.onclick = nextFrame;
+  }
 
   const frameId = FRAMES[idx];
 
@@ -463,6 +468,15 @@ function goToFrame(idx) {
 
 function nextFrame() { if (_currentIdx < TOTAL - 1) goToFrame(_currentIdx + 1); }
 function prevFrame() { if (_currentIdx > 0)          goToFrame(_currentIdx - 1); }
+
+function finishAdboard() {
+  document.getElementById('adboard-root').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px;">
+      <div style="font-size:3rem;margin-bottom:16px;">✅</div>
+      <div style="font-size:1.6rem;font-weight:700;color:var(--purple-dark);margin-bottom:12px;">Vielen Dank!</div>
+      <div style="color:var(--text-mid);font-size:1rem;max-width:400px;">Ihre Antworten wurden gespeichert. Das Adboard ist abgeschlossen.</div>
+    </div>`;
+}
 
 // ── Field auto-save ────────────────────────────────────────────────────────
 function onFieldInput(ta) {
