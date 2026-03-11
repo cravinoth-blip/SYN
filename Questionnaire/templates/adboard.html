@@ -405,6 +405,7 @@ let _activeFrame   = null;
 let _userName      = null;
 let _saveTimers    = {};
 let _pollTimer     = null;
+const _peerCache   = {};   // keyed by containerId → last JSON string
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -533,27 +534,33 @@ async function refreshPeerResponses(frameId) {
     const data = await (await fetch('/api/responses/' + frameId + '/all')).json();
     document.querySelectorAll(`.field-textarea[data-frame="${frameId}"]`).forEach(ta => {
       const fieldId = ta.dataset.field;
-      const peers = (data[fieldId] || []).filter(r => r.author !== _userName && r.content.trim());
+      // Show ALL participants including own answer
+      const peers = (data[fieldId] || []).filter(r => r.content.trim());
       const containerId = 'peers-' + frameId + '-' + fieldId;
+
+      // Only update DOM when data actually changed (JSON cache comparison)
+      const cacheKey = containerId;
+      const newJson = JSON.stringify(peers);
+      if (_peerCache[cacheKey] === newJson) return;
+      _peerCache[cacheKey] = newJson;
+
       let container = document.getElementById(containerId);
       if (!container) {
         container = document.createElement('div');
         container.id = containerId;
         container.className = 'peer-responses';
-        // textareas in session1 are inside .dq-inner, not .field-group
         const parent = ta.closest('.field-group') || ta.parentElement;
         parent.appendChild(container);
       }
-      const newHtml = peers.length === 0 ? '' :
-        '<div class="peer-header">Beiträge anderer Teilnehmer:innen</div>' +
+      if (peers.length === 0) { container.innerHTML = ''; return; }
+      container.innerHTML =
+        '<div class="peer-header">Antworten der Teilnehmer:innen</div>' +
         peers.map(p =>
-          `<div class="peer-card">
-            <div class="peer-author">${escHtml(p.author)}</div>
+          `<div class="peer-card${p.author === _userName ? ' peer-card-own' : ''}">
+            <div class="peer-author">${escHtml(p.author)}${p.author === _userName ? ' <span class="peer-you">(Sie)</span>' : ''}</div>
             <div class="peer-content">${escHtml(p.content)}</div>
           </div>`
         ).join('');
-      // Only update DOM if content changed – prevents flicker on every poll
-      if (container.innerHTML !== newHtml) container.innerHTML = newHtml;
     });
   } catch(e) { /* silent – no network */ }
 }

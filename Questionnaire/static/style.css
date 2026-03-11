@@ -1317,7 +1317,10 @@ body {
 .peer-responses { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .peer-header { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-mid); padding-bottom: 4px; border-bottom: 1px solid #e8e0f4; }
 .peer-card { background: #f5f0ff; border-left: 3px solid var(--purple-mid); border-radius: 6px; padding: 8px 12px; }
+.peer-card-own { background: #edf7ee; border-left-color: #2E7D32; }
 .peer-author { font-size: 0.72rem; font-weight: 700; color: var(--purple-dark); margin-bottom: 4px; }
+.peer-card-own .peer-author { color: #2E7D32; }
+.peer-you { font-weight: 400; opacity: 0.75; }
 .peer-content { font-size: 0.88rem; color: var(--text-dark); white-space: pre-wrap; line-height: 1.5; }
 
 /* ══════════════════════════════════════════════════
