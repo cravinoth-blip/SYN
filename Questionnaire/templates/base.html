@@ -2,7 +2,10 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>{% block title %}Bronchiectasis Unlocked – Umfrage{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   {% block head %}{% endblock %}
@@ -21,7 +24,20 @@
     </div>
   </header>
 
-  <main class="main-content">
+  <nav class="tab-nav">
+    <div class="tab-nav-inner">
+      <a href="{{ url_for('index') }}"
+         class="tab-link {% if request.endpoint in ['index','survey','cases','success'] %}active{% endif %}">
+        Questionnaire
+      </a>
+      <a href="{{ url_for('adboard') }}"
+         class="tab-link {% if request.endpoint == 'adboard' %}active{% endif %}">
+        Adboard
+      </a>
+    </div>
+  </nav>
+
+  <main class="main-content {% block main_class %}{% endblock %}">
     {% block content %}{% endblock %}
   </main>
 

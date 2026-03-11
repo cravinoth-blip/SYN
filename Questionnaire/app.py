@@ -104,6 +104,25 @@ def close_connection(exception):
 
 
 _SCHEMA_SQLITE = '''
+    CREATE TABLE IF NOT EXISTS frame_responses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        frame_id TEXT NOT NULL,
+        field_id TEXT NOT NULL,
+        author   TEXT NOT NULL,
+        content  TEXT DEFAULT '',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(frame_id, field_id, author)
+    );
+    CREATE TABLE IF NOT EXISTS sticky_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        frame_id TEXT NOT NULL,
+        author TEXT NOT NULL,
+        text TEXT NOT NULL,
+        color TEXT DEFAULT '#FFE066',
+        x_pct REAL DEFAULT 10,
+        y_pct REAL DEFAULT 10,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     CREATE TABLE IF NOT EXISTS survey_responses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         respondent_name TEXT NOT NULL,
@@ -315,6 +334,87 @@ def cases(survey_id):
 @app.route('/success')
 def success():
     return render_template('success.html')
+
+
+# ── Adboard ───────────────────────────────────────────────────────────────────
+
+@app.route('/adboard')
+def adboard():
+    return render_template('adboard.html')
+
+
+@app.route('/api/responses/<frame_id>')
+def get_responses(frame_id):
+    author = request.args.get('author', '')
+    db = get_db()
+    rows = db.query(
+        'SELECT field_id, content FROM frame_responses WHERE frame_id=? AND author=?',
+        (frame_id, author)
+    )
+    from flask import Response
+    return Response(json.dumps({r['field_id']: r['content'] for r in rows}), mimetype='application/json')
+
+
+@app.route('/api/responses', methods=['POST'])
+def save_response():
+    data = request.get_json()
+    db = get_db()
+    if USE_POSTGRES:
+        db.execute('''
+            INSERT INTO frame_responses (frame_id, field_id, author, content, updated_at)
+            VALUES (%s,%s,%s,%s,NOW())
+            ON CONFLICT (frame_id, field_id, author) DO UPDATE SET content=EXCLUDED.content, updated_at=NOW()
+        ''', (data['frame_id'], data['field_id'], data['author'], data['content']))
+    else:
+        db.execute('''
+            INSERT INTO frame_responses (frame_id, field_id, author, content, updated_at)
+            VALUES (?,?,?,?,CURRENT_TIMESTAMP)
+            ON CONFLICT(frame_id, field_id, author) DO UPDATE SET content=excluded.content, updated_at=CURRENT_TIMESTAMP
+        ''', (data['frame_id'], data['field_id'], data['author'], data['content']))
+    from flask import Response
+    return Response(json.dumps({'ok': True}), mimetype='application/json')
+
+
+@app.route('/api/notes/<frame_id>')
+def get_notes(frame_id):
+    db = get_db()
+    notes = db.query(
+        'SELECT * FROM sticky_notes WHERE frame_id = ? ORDER BY created_at', (frame_id,)
+    )
+    from flask import Response
+    return Response(json.dumps(notes, default=str), mimetype='application/json')
+
+
+@app.route('/api/notes', methods=['POST'])
+def add_note():
+    data = request.get_json()
+    db = get_db()
+    note_id = db.insert(
+        'INSERT INTO sticky_notes (frame_id, author, text, color, x_pct, y_pct) VALUES (?,?,?,?,?,?)',
+        (data['frame_id'], data['author'], data['text'],
+         data.get('color', '#FFE066'), data.get('x_pct', 10), data.get('y_pct', 10))
+    )
+    note = db.one('SELECT * FROM sticky_notes WHERE id = ?', (note_id,))
+    from flask import Response
+    return Response(json.dumps(dict(note), default=str), mimetype='application/json')
+
+
+@app.route('/api/notes/<int:note_id>', methods=['PATCH'])
+def update_note_pos(note_id):
+    data = request.get_json()
+    db = get_db()
+    db.execute('UPDATE sticky_notes SET x_pct=?, y_pct=? WHERE id=?',
+               (data['x_pct'], data['y_pct'], note_id))
+    from flask import Response
+    return Response(json.dumps({'ok': True}), mimetype='application/json')
+
+
+@app.route('/api/notes/<int:note_id>', methods=['DELETE'])
+def delete_note(note_id):
+    db = get_db()
+    db.execute('DELETE FROM sticky_notes WHERE id=?', (note_id,))
+    from flask import Response
+    return Response(json.dumps({'ok': True}), mimetype='application/json')
 
 
 @app.route('/admin')

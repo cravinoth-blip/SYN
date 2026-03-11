@@ -44,3 +44,9 @@ frontend/.env.local
 
 # Claude Code memory (local only)
 .claude/
+
+# Questionnaire – local only
+Questionnaire/vercel-env.txt
+Questionnaire/responses.db
+Questionnaire/*.pdf
+Questionnaire/start.bat

@@ -1,0 +1,607 @@
+{% extends 'base.html' %}
+{% block title %}Adboard – Bronchiectasis Unlocked{% endblock %}
+{% block main_class %}adboard-main{% endblock %}
+
+{% block content %}
+
+<!-- ══ NAME GATE ══ -->
+<div id="name-gate" class="name-gate">
+  <div class="name-gate-box">
+    <div class="name-gate-logo">ins<strong>med</strong><sup>®</sup></div>
+    <div class="name-gate-title">Willkommen zum Medical AdBoard</div>
+    <p class="name-gate-sub">Bitte geben Sie Ihren Namen ein, um fortzufahren.</p>
+    <input id="gate-name-input" type="text" class="gate-input" placeholder="Ihr vollständiger Name…"
+           autocomplete="off" onkeydown="if(event.key==='Enter')submitGateName()">
+    <button class="gate-btn" onclick="submitGateName()">Weiter &rarr;</button>
+  </div>
+</div>
+
+<!-- ══ ADBOARD ROOT ══ -->
+<div id="adboard-root" class="adboard-root hidden">
+
+  <!-- Breadcrumb -->
+  <div class="ab-breadcrumb">
+    <button class="ab-step active" data-idx="0" onclick="goToFrame(0)">Agenda</button>
+    <span class="ab-step-arrow">›</span>
+    <button class="ab-step" data-idx="1" onclick="goToFrame(1)">Session 1</button>
+    <span class="ab-step-arrow">›</span>
+    <button class="ab-step" data-idx="2" onclick="goToFrame(2)">Session 2</button>
+    <span class="ab-step-arrow">›</span>
+    <button class="ab-step" data-idx="3" onclick="goToFrame(3)">Session 3</button>
+    <span class="ab-step-arrow">›</span>
+    <button class="ab-step" data-idx="4" onclick="goToFrame(4)">Session 4</button>
+  </div>
+
+  <!-- ══════════════ FRAME 0 – AGENDA ══════════════ -->
+  <section class="adboard-frame active" data-frame="agenda" data-idx="0">
+    <div class="af-header" style="--frame-color:#2D6A4F">
+      <div class="af-meta">Agenda</div>
+      <div class="af-title">Medical AdBoard – December 2025</div>
+    </div>
+    <div class="af-body">
+      <table class="agenda-table">
+        <thead>
+          <tr><th>Zeit</th><th>Format</th><th>Inhalt</th><th>Dauer</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>15:30</td><td>Begrüßung &amp; Ziele</td><td>Welcome Notes: Tim Kröger-Kilian, Thomas Nisters</td><td>10 min</td></tr>
+          <tr><td>15:40</td><td>Keynote ERS-Leitlinie</td><td>ERS 2025 Update (Prof. Ringshausen)</td><td>10 min</td></tr>
+          <tr><td>15:50</td><td>Diskussion</td><td>ERS Update &amp; Implikationen für die deutsche Versorgungslandschaft</td><td>15 min</td></tr>
+          <tr><td>16:05</td><td>Keynote Brinsupri</td><td>Brinsupri-Label (EU-Zulassung: Labelanalyse &amp; Implikationen)</td><td>10 min</td></tr>
+          <tr class="agenda-highlight"><td>16:15</td><td>Diskussion</td><td>Brensocatib Zulassung / Anwendung in der Praxis</td><td>45 min</td></tr>
+          <tr class="agenda-break"><td>17:00</td><td>Pause</td><td>—</td><td>15 min</td></tr>
+          <tr class="agenda-highlight"><td>17:15</td><td>Diskussion</td><td>Motivation und Hürden bei der Einführung von Brensocatib</td><td>10+35 min</td></tr>
+          <tr class="agenda-highlight"><td>18:00</td><td>Diskussion</td><td>CHEST-Daten &amp; offene Fragen</td><td>15 min</td></tr>
+          <tr><td>18:15</td><td>Market Access</td><td>—</td><td>15 min</td></tr>
+          <tr><td>18:30</td><td>Ende</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <div class="field-group">
+        <label class="field-label">Notizen zur Agenda</label>
+        <textarea class="field-textarea" data-frame="agenda" data-field="agenda_notes" placeholder="Ihre Notizen…" rows="4"></textarea>
+        <div class="save-indicator" id="si-agenda-agenda_notes"></div>
+      </div>
+    </div>
+    <div class="af-notes-canvas" id="notes-agenda"></div>
+    <div class="af-toolbar">
+      <button class="btn-add-note" onclick="openNoteModal('agenda')">＋ Sticky Note</button>
+    </div>
+  </section>
+
+  <!-- ══════════════ FRAME 1 – SESSION 1 ══════════════ -->
+  <section class="adboard-frame" data-frame="session1" data-idx="1">
+    <div class="af-header" style="--frame-color:#5C2D91">
+      <div class="af-meta">Session 1 &nbsp;·&nbsp; 15 min &nbsp;·&nbsp; Moderation: Thomas Nisters</div>
+      <div class="af-title">ERS Updates &amp; Implikationen für die deutsche Versorgungslandschaft</div>
+    </div>
+    <div class="af-body">
+      <div class="dq-grid">
+
+        <div class="dq-card">
+          <div class="dq-num">1</div>
+          <div class="dq-inner">
+            <div class="dq-text">Was ist Ihre Einschätzung des Leitlinien-Updates?</div>
+            <textarea class="field-textarea" data-frame="session1" data-field="s1_q1"
+                      placeholder="Ihre Antwort…" rows="4"></textarea>
+            <div class="save-indicator" id="si-session1-s1_q1"></div>
+          </div>
+        </div>
+
+        <div class="dq-card">
+          <div class="dq-num">2</div>
+          <div class="dq-inner">
+            <div class="dq-text">Können Sie uns einen Aspekt nennen, den Sie für sich mit in den praktischen Alltag nehmen?</div>
+            <textarea class="field-textarea" data-frame="session1" data-field="s1_q2"
+                      placeholder="Ihre Antwort…" rows="4"></textarea>
+            <div class="save-indicator" id="si-session1-s1_q2"></div>
+          </div>
+        </div>
+
+        <div class="dq-card">
+          <div class="dq-num">3</div>
+          <div class="dq-inner">
+            <div class="dq-text">Welche Evidenz wäre erforderlich, um eine entsprechende Empfehlung für die DPP-1 Inhibition in die nationalen / internationalen Leitlinien aufzunehmen?</div>
+            <textarea class="field-textarea" data-frame="session1" data-field="s1_q3"
+                      placeholder="Ihre Antwort…" rows="4"></textarea>
+            <div class="save-indicator" id="si-session1-s1_q3"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="af-notes-canvas" id="notes-session1"></div>
+    <div class="af-toolbar">
+      <button class="btn-add-note" onclick="openNoteModal('session1')">＋ Sticky Note</button>
+    </div>
+  </section>
+
+  <!-- ══════════════ FRAME 2 – SESSION 2 ══════════════ -->
+  <section class="adboard-frame" data-frame="session2" data-idx="2">
+    <div class="af-header" style="--frame-color:#1565C0">
+      <div class="af-meta">Session 2 &nbsp;·&nbsp; 45 min &nbsp;·&nbsp; Moderation: Thomas Nisters</div>
+      <div class="af-title">Brensocatib Zulassung / Anwendung in der Praxis</div>
+    </div>
+    <div class="af-body">
+      <div class="s2-grid">
+
+        <!-- Q1: Patient:innen -->
+        <div class="s2-quadrant">
+          <div class="s2-q-header">1. Patient:innen</div>
+          <div class="s2-q-body">
+            <p class="s2-question">Welche klinischen Merkmale machen eine:n Patient:in für Brensocatib grundsätzlich geeignet?</p>
+            <div class="bucket-row">
+              <div class="bucket must-have"><div class="bucket-label">Must-haves</div></div>
+              <div class="bucket should-have"><div class="bucket-label">Should-haves</div></div>
+              <div class="bucket caution"><div class="bucket-label">Caution</div></div>
+              <div class="bucket exclude"><div class="bucket-label">Exclude</div></div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Welche 3 Kriterien sind für Sie nicht verhandelbare Must-haves?</label>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_must_haves"
+                        placeholder="Ihre 3 Must-have Kriterien…" rows="4"></textarea>
+              <div class="save-indicator" id="si-session2-s2_must_haves"></div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Should-haves, Caution &amp; Exclusion-Kriterien</label>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_patient_other"
+                        placeholder="Weitere Kriterien…" rows="3"></textarea>
+              <div class="save-indicator" id="si-session2-s2_patient_other"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q2: Therapiestart -->
+        <div class="s2-quadrant">
+          <div class="s2-q-header">2. Therapiestart</div>
+          <div class="s2-q-body">
+            <p class="s2-question">Label – besondere Warnhinweise und Vorsichtsmaßnahmen:</p>
+            <ul class="warning-list">
+              <li>Fertilität, Schwangerschaft, Stillen</li>
+              <li>Infektionen insb. Mykosen</li>
+              <li>Immundefizienzen</li>
+              <li>Impfungen</li>
+            </ul>
+
+            <div class="field-group">
+              <label class="field-label">Gibt es Patient:innenschulungen die Sie vor Therapiestart für entscheidend halten?</label>
+              <div class="topic-chip-row">
+                <div class="topic-chip">Adhärenz</div>
+                <div class="topic-chip">Erwartungen</div>
+                <div class="topic-chip">Warnzeichen</div>
+              </div>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_schulung"
+                        placeholder="Ihre Antwort zu Schulungsmaßnahmen…" rows="3"></textarea>
+              <div class="save-indicator" id="si-session2-s2_schulung"></div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Welche Baseline-Erhebungen sind für Sie vor dem Start der Therapie mit Brensocatib essenziell?</label>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_baseline"
+                        placeholder="Essentielle Baseline-Erhebungen…" rows="4"></textarea>
+              <div class="save-indicator" id="si-session2-s2_baseline"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q3: Therapiepfade -->
+        <div class="s2-quadrant">
+          <div class="s2-q-header">3. Therapiepfade</div>
+          <div class="s2-q-body">
+            <div class="field-group">
+              <label class="field-label">Welche Elemente des ERS-Therapieschemas halten Sie für besonders relevant?</label>
+              <div class="ers-schema-box">
+                <div class="ers-schema-label">ERS Algorithm – Long-term antibiotic treatment in bronchiectasis</div>
+              </div>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_ers_schema"
+                        placeholder="Ihre Einschätzung zum ERS-Therapieschema…" rows="3"></textarea>
+              <div class="save-indicator" id="si-session2-s2_ers_schema"></div>
+            </div>
+
+            <p class="s2-question">Brensocatib Kombination – kombinierbar vs. eher vermeiden?</p>
+            <table class="combo-table">
+              <thead><tr><th>Therapie</th><th class="col-green">Kombinierbar</th><th class="col-red">Eher vermeiden</th></tr></thead>
+              <tbody>
+                <tr><td>Langzeit-Makrolide</td><td></td><td></td></tr>
+                <tr><td>Mukolytika / Sekretolytika</td><td></td><td></td></tr>
+                <tr><td>Langzeit inhalative Antibiotika</td><td></td><td></td></tr>
+              </tbody>
+            </table>
+            <div class="field-group">
+              <label class="field-label">Kommentar zu Kombinationstherapien</label>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_kombination"
+                        placeholder="Welche Kombinationen bevorzugen / vermeiden Sie?" rows="3"></textarea>
+              <div class="save-indicator" id="si-session2-s2_kombination"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q4: Monitoring & Management -->
+        <div class="s2-quadrant">
+          <div class="s2-q-header">4. Monitoring &amp; Management</div>
+          <div class="s2-q-body">
+            <div class="field-group">
+              <label class="field-label">Welche Parameter nutzen Sie zur Verlaufskontrolle?</label>
+              <div class="topic-chip-row">
+                <div class="topic-chip">Klinische Parameter</div>
+                <div class="topic-chip">Patient reported outcomes</div>
+              </div>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_monitoring"
+                        placeholder="Parameter zur Verlaufskontrolle…" rows="4"></textarea>
+              <div class="save-indicator" id="si-session2-s2_monitoring"></div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Welche Baseline-Erhebungen sind für Sie vor dem Start mit Brensocatib essenziell?</label>
+              <textarea class="field-textarea" data-frame="session2" data-field="s2_monitoring_baseline"
+                        placeholder="Essentielle Baseline-Erhebungen für das Monitoring…" rows="4"></textarea>
+              <div class="save-indicator" id="si-session2-s2_monitoring_baseline"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="af-notes-canvas" id="notes-session2"></div>
+    <div class="af-toolbar">
+      <button class="btn-add-note" onclick="openNoteModal('session2')">＋ Sticky Note</button>
+    </div>
+  </section>
+
+  <!-- ══════════════ FRAME 3 – SESSION 3 ══════════════ -->
+  <section class="adboard-frame" data-frame="session3" data-idx="3">
+    <div class="af-header" style="--frame-color:#00695C">
+      <div class="af-meta">Session 3 &nbsp;·&nbsp; 10 + 35 min &nbsp;·&nbsp; Moderation: Thomas Nisters</div>
+      <div class="af-title">Motivation und Hürden bei der Einführung von Brensocatib</div>
+    </div>
+    <div class="af-body">
+      <div class="s3-columns">
+
+        <div class="s3-column s3-green">
+          <div class="s3-col-header">Motivatoren</div>
+          <div class="s3-col-hint">Was motiviert Sie zur Anwendung von Brensocatib?</div>
+          <div class="s3-sub"><span>Verbesserte Lebensqualität</span></div>
+          <div class="s3-sub"><span>Reduktion von Exazerbationen</span></div>
+          <div class="s3-sub"><span>Andere Aspekte</span></div>
+          <div class="field-group s3-field">
+            <textarea class="field-textarea" data-frame="session3" data-field="s3_motivatoren"
+                      placeholder="Ihre Motivatoren für Brensocatib…" rows="5"></textarea>
+            <div class="save-indicator" id="si-session3-s3_motivatoren"></div>
+          </div>
+        </div>
+
+        <div class="s3-column s3-red">
+          <div class="s3-col-header">Hürden &amp; Barrieren</div>
+          <div class="s3-col-hint">Was sind die größten Hürden bei der Einführung?</div>
+          <div class="s3-sub"><span>Klinische Hürden</span></div>
+          <div class="s3-sub"><span>Administrative Hürden</span></div>
+          <div class="s3-sub"><span>Patientenseitige Hürden</span></div>
+          <div class="field-group s3-field">
+            <textarea class="field-textarea" data-frame="session3" data-field="s3_hurden"
+                      placeholder="Größte Hürden bei der Einführung…" rows="5"></textarea>
+            <div class="save-indicator" id="si-session3-s3_hurden"></div>
+          </div>
+        </div>
+
+        <div class="s3-column s3-blue">
+          <div class="s3-col-header">Lösungsansätze</div>
+          <div class="s3-col-hint">Wie können Hürden überwunden werden?</div>
+          <div class="field-group s3-field">
+            <textarea class="field-textarea" data-frame="session3" data-field="s3_loesungen"
+                      placeholder="Wie können die Hürden überwunden werden?" rows="5"></textarea>
+            <div class="save-indicator" id="si-session3-s3_loesungen"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="af-notes-canvas" id="notes-session3"></div>
+    <div class="af-toolbar">
+      <button class="btn-add-note" onclick="openNoteModal('session3')">＋ Sticky Note</button>
+    </div>
+  </section>
+
+  <!-- ══════════════ FRAME 4 – SESSION 4 ══════════════ -->
+  <section class="adboard-frame" data-frame="session4" data-idx="4">
+    <div class="af-header" style="--frame-color:#6A1B9A">
+      <div class="af-meta">Session 4 &nbsp;·&nbsp; 15 min &nbsp;·&nbsp; Moderation: Thomas Nisters</div>
+      <div class="af-title">CHEST-Daten &amp; offene Fragen</div>
+    </div>
+    <div class="af-body">
+      <div class="s4-grid">
+
+        <div class="s4-box">
+          <div class="s4-box-title">CT-Befunde im Alltag</div>
+          <p>Relevanz erweiterter CT-Befunde (Verteilung, Bronchialwände, Mucus, etc.) für Ihren Alltag?</p>
+          <div class="field-group">
+            <textarea class="field-textarea" data-frame="session4" data-field="s4_ct_befunde"
+                      placeholder="Ihre Einschätzung zur Relevanz der CT-Befunde…" rows="5"></textarea>
+            <div class="save-indicator" id="si-session4-s4_ct_befunde"></div>
+          </div>
+        </div>
+
+        <div class="s4-box">
+          <div class="s4-box-title">Disease Modification</div>
+          <p>Was bedeutet Bedarf an „disease modification" bei der Bronchiektasen-Erkrankung? (Radiologisch und klinisch)</p>
+          <div class="field-group">
+            <textarea class="field-textarea" data-frame="session4" data-field="s4_disease_mod"
+                      placeholder="Ihre Definition von disease modification…" rows="5"></textarea>
+            <div class="save-indicator" id="si-session4-s4_disease_mod"></div>
+          </div>
+        </div>
+
+        <div class="s4-box">
+          <div class="s4-box-title">Standardisierte CT-Auswertung</div>
+          <p>Bedarf an standardisierten CT-Auswertungen in der klinischen Praxis? (Initial und Follow-Up?)</p>
+          <div class="field-group">
+            <textarea class="field-textarea" data-frame="session4" data-field="s4_ct_standard"
+                      placeholder="Ihr Bedarf an standardisierten CT-Auswertungen…" rows="5"></textarea>
+            <div class="save-indicator" id="si-session4-s4_ct_standard"></div>
+          </div>
+        </div>
+
+        <div class="s4-box">
+          <div class="s4-box-title">Offene Fragen</div>
+          <p>Welche offenen Fragen haben Sie an die CHEST-Daten und zu Brensocatib?</p>
+          <div class="field-group">
+            <textarea class="field-textarea" data-frame="session4" data-field="s4_open_q"
+                      placeholder="Ihre offenen Fragen…" rows="5"></textarea>
+            <div class="save-indicator" id="si-session4-s4_open_q"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="af-notes-canvas" id="notes-session4"></div>
+    <div class="af-toolbar">
+      <button class="btn-add-note" onclick="openNoteModal('session4')">＋ Sticky Note</button>
+    </div>
+  </section>
+
+  <!-- Bottom navigation -->
+  <div class="ab-bottom-nav">
+    <button class="ab-nav-btn" id="btn-prev" onclick="prevFrame()" disabled>&#8592; Zurück</button>
+    <span class="ab-counter" id="ab-counter">1 / 5</span>
+    <button class="ab-nav-btn ab-nav-next" id="btn-next" onclick="nextFrame()">Weiter &#8594;</button>
+  </div>
+
+</div><!-- /adboard-root -->
+
+<!-- ══ ADD NOTE MODAL ══ -->
+<div id="note-modal" class="note-modal hidden" onclick="if(event.target===this)closeNoteModal()">
+  <div class="note-modal-box">
+    <div class="note-modal-title">Sticky Note hinzufügen</div>
+    <label class="note-label" for="note-text">Notiz</label>
+    <textarea id="note-text" class="note-textarea" rows="4" placeholder="Text eingeben…"></textarea>
+    <label class="note-label">Farbe</label>
+    <div class="note-colors">
+      <span class="nc active" style="background:#FFE066" data-color="#FFE066" onclick="selectColor(this)"></span>
+      <span class="nc" style="background:#FF9EC4" data-color="#FF9EC4" onclick="selectColor(this)"></span>
+      <span class="nc" style="background:#96E6A1" data-color="#96E6A1" onclick="selectColor(this)"></span>
+      <span class="nc" style="background:#74B9FF" data-color="#74B9FF" onclick="selectColor(this)"></span>
+      <span class="nc" style="background:#FDCB6E" data-color="#FDCB6E" onclick="selectColor(this)"></span>
+      <span class="nc" style="background:#DDA0DD" data-color="#DDA0DD" onclick="selectColor(this)"></span>
+    </div>
+    <div class="note-modal-actions">
+      <button class="btn-cancel" onclick="closeNoteModal()">Abbrechen</button>
+      <button class="btn-submit" onclick="submitNote()">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const FRAMES     = ['agenda','session1','session2','session3','session4'];
+const TOTAL      = FRAMES.length;
+const notesLoaded = {};
+const respLoaded  = {};
+
+let _currentIdx    = 0;
+let _selectedColor = '#FFE066';
+let _activeFrame   = null;
+let _userName      = null;
+let _saveTimers    = {};
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  _userName = localStorage.getItem('adboard_name');
+  if (_userName) showAdboard();
+  else {
+    document.getElementById('name-gate').classList.remove('hidden');
+    document.getElementById('gate-name-input').focus();
+  }
+
+  // Wire up all textareas for auto-save
+  document.querySelectorAll('.field-textarea').forEach(ta => {
+    ta.addEventListener('input', () => onFieldInput(ta));
+  });
+});
+
+// ── Name gate ─────────────────────────────────────────────────────────────
+function submitGateName() {
+  const val = document.getElementById('gate-name-input').value.trim();
+  if (!val) { document.getElementById('gate-name-input').focus(); return; }
+  _userName = val;
+  localStorage.setItem('adboard_name', val);
+  document.getElementById('name-gate').classList.add('hidden');
+  showAdboard();
+}
+
+function showAdboard() {
+  document.getElementById('adboard-root').classList.remove('hidden');
+  goToFrame(0);
+}
+
+// ── Frame navigation ───────────────────────────────────────────────────────
+function goToFrame(idx) {
+  _currentIdx = idx;
+  document.querySelectorAll('.adboard-frame').forEach(f => f.classList.remove('active'));
+  document.querySelectorAll('.adboard-frame')[idx].classList.add('active');
+
+  document.querySelectorAll('.ab-step').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+    s.classList.toggle('visited', i < idx);
+  });
+
+  document.getElementById('ab-counter').textContent = (idx + 1) + ' / ' + TOTAL;
+  document.getElementById('btn-prev').disabled = idx === 0;
+  const nextBtn = document.getElementById('btn-next');
+  nextBtn.disabled = false;
+  nextBtn.textContent = idx === TOTAL - 1 ? 'Fertig ✓' : 'Weiter →';
+  if (idx === TOTAL - 1) nextBtn.disabled = true;
+
+  const frameId = FRAMES[idx];
+
+  if (!notesLoaded[frameId]) { notesLoaded[frameId] = true; loadNotes(frameId); }
+  if (!respLoaded[frameId])  { respLoaded[frameId]  = true; loadResponses(frameId); }
+
+  document.getElementById('adboard-root').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function nextFrame() { if (_currentIdx < TOTAL - 1) goToFrame(_currentIdx + 1); }
+function prevFrame() { if (_currentIdx > 0)          goToFrame(_currentIdx - 1); }
+
+// ── Field auto-save ────────────────────────────────────────────────────────
+function onFieldInput(ta) {
+  const key = ta.dataset.frame + '_' + ta.dataset.field;
+  clearTimeout(_saveTimers[key]);
+  _saveTimers[key] = setTimeout(() => saveField(ta), 800);
+}
+
+async function saveField(ta) {
+  const siId = 'si-' + ta.dataset.frame + '-' + ta.dataset.field;
+  const si = document.getElementById(siId);
+  if (si) { si.textContent = ''; si.className = 'save-indicator saving'; si.textContent = 'Speichern…'; }
+
+  await fetch('/api/responses', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      frame_id: ta.dataset.frame,
+      field_id: ta.dataset.field,
+      author:   _userName,
+      content:  ta.value
+    })
+  });
+
+  if (si) {
+    si.textContent = '✓ Gespeichert';
+    si.className = 'save-indicator saved';
+    setTimeout(() => { si.textContent = ''; si.className = 'save-indicator'; }, 2500);
+  }
+}
+
+async function loadResponses(frameId) {
+  if (!_userName) return;
+  const res  = await fetch('/api/responses/' + frameId + '?author=' + encodeURIComponent(_userName));
+  const data = await res.json();
+  document.querySelectorAll(`.field-textarea[data-frame="${frameId}"]`).forEach(ta => {
+    if (data[ta.dataset.field] !== undefined) ta.value = data[ta.dataset.field];
+  });
+}
+
+// ── Sticky notes modal ─────────────────────────────────────────────────────
+function openNoteModal(frameId) {
+  _activeFrame = frameId;
+  document.getElementById('note-modal').classList.remove('hidden');
+  document.getElementById('note-text').focus();
+}
+function closeNoteModal() {
+  document.getElementById('note-modal').classList.add('hidden');
+  document.getElementById('note-text').value = '';
+}
+function selectColor(el) {
+  document.querySelectorAll('.nc').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  _selectedColor = el.dataset.color;
+}
+
+async function submitNote() {
+  const text = document.getElementById('note-text').value.trim();
+  if (!text) { document.getElementById('note-text').focus(); return; }
+  const x = 5 + Math.random() * 68, y = 5 + Math.random() * 68;
+  const res = await fetch('/api/notes', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({frame_id: _activeFrame, author: _userName, text, color: _selectedColor, x_pct: x, y_pct: y})
+  });
+  renderNote(await res.json(), document.getElementById('notes-' + _activeFrame));
+  closeNoteModal();
+}
+
+async function loadNotes(frameId) {
+  const notes = await (await fetch('/api/notes/' + frameId)).json();
+  const canvas = document.getElementById('notes-' + frameId);
+  notes.forEach(n => renderNote(n, canvas));
+}
+
+function renderNote(note, canvas) {
+  const el = document.createElement('div');
+  el.className = 'sticky-note'; el.dataset.id = note.id;
+  el.style.background = note.color || '#FFE066';
+  el.style.left = note.x_pct + '%'; el.style.top = note.y_pct + '%';
+  el.style.color = isColorDark(note.color) ? '#fff' : '#1A1035';
+  el.innerHTML = `<div class="sn-author">${escHtml(note.author)}</div><div class="sn-text">${escHtml(note.text)}</div><button class="sn-delete" onclick="deleteNote(${note.id},this)">×</button>`;
+  makeDraggable(el, canvas);
+  canvas.appendChild(el);
+}
+
+async function deleteNote(id, btn) {
+  if (!confirm('Notiz löschen?')) return;
+  await fetch('/api/notes/' + id, {method:'DELETE'});
+  btn.closest('.sticky-note').remove();
+}
+
+function makeDraggable(el, canvas) {
+  let sx, sy, ol, ot;
+
+  function startDrag(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    sx = clientX; sy = clientY;
+    ol = parseFloat(el.style.left); ot = parseFloat(el.style.top);
+    el.style.zIndex = 100;
+    return r;
+  }
+  function moveDrag(clientX, clientY, r) {
+    el.style.left = Math.max(0,Math.min(84,ol+((clientX-sx)/r.width)*100))+'%';
+    el.style.top  = Math.max(0,Math.min(84,ot+((clientY-sy)/r.height)*100))+'%';
+  }
+  async function endDrag() {
+    el.style.zIndex = 10;
+    await fetch('/api/notes/'+el.dataset.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({x_pct:parseFloat(el.style.left),y_pct:parseFloat(el.style.top)})});
+  }
+
+  // Mouse
+  el.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('sn-delete')) return;
+    e.preventDefault();
+    const r = startDrag(e.clientX, e.clientY);
+    const mv = e => moveDrag(e.clientX, e.clientY, r);
+    const up = () => { endDrag(); document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
+    document.addEventListener('mousemove',mv);
+    document.addEventListener('mouseup',up);
+  });
+
+  // Touch (iPad / tablet)
+  el.addEventListener('touchstart', e => {
+    if (e.target.classList.contains('sn-delete')) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const r = startDrag(t.clientX, t.clientY);
+    const mv = e => { const t=e.touches[0]; moveDrag(t.clientX, t.clientY, r); };
+    const up = () => { endDrag(); el.removeEventListener('touchmove',mv); el.removeEventListener('touchend',up); };
+    el.addEventListener('touchmove', mv, {passive:false});
+    el.addEventListener('touchend', up);
+  }, {passive:false});
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function isColorDark(hex){
+  if(!hex||hex.length<7)return false;
+  return(parseInt(hex.slice(1,3),16)*299+parseInt(hex.slice(3,5),16)*587+parseInt(hex.slice(5,7),16)*114)/1000<128;
+}
+</script>
+{% endblock %}
