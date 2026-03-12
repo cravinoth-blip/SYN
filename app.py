@@ -524,82 +524,20 @@ async def delete_document(source_file: str):
     cur.close()
     return {"deleted": count, "source_file": source_file, "total_chunks": total}
 
-# ── PubMed search (COMPILE_ADD_ON.PUBMED_DETAILS.PUBLICATIONS) ────────────────
-PUBMED_TABLE = "COMPILE_ADD_ON.PUBMED_DETAILS.PUBLICATIONS"
-
-def search_pubmed(query: str, top_k: int = 5) -> list[dict]:
-    """Keyword search against the PubMed publications table."""
-    # Extract the first 1-4 significant words as search terms
-    stop = {"the","a","an","of","in","on","for","and","or","with","to","is","are","what","how","does","do","its"}
-    words = [w.strip("?.,!") for w in query.split() if w.lower().strip("?.,!") not in stop and len(w) > 2]
-    if not words:
-        return []
-    # Build ILIKE conditions for title and abstract
-    term = " ".join(words[:4])
-    conn = get_sf_conn()
-    cur = conn.cursor()
-    try:
-        cur.execute(f"""
-            SELECT PUBMED_ID, ARTICLE_TITLE, ABSTRACT, JOURNAL_TITLE,
-                   PUBMED_PUB_YEAR, MESH_TERMS, ELOCATION_ID, MAX_AUTHOR_INDEX,
-                   FIRST_AUTHOR_AFFILIATION
-            FROM {PUBMED_TABLE}
-            WHERE (ARTICLE_TITLE ILIKE %s OR ABSTRACT ILIKE %s)
-              AND PUBMED_PUB_YEAR >= 2015
-            ORDER BY PUBMED_PUB_YEAR DESC NULLS LAST
-            LIMIT %s
-        """, (f"%{term}%", f"%{term}%", top_k))
-        cols = [d[0] for d in cur.description]
-        out = []
-        for row in cur.fetchall():
-            r = dict(zip(cols, row))
-            doi = ""
-            eloc = r.get("ELOCATION_ID") or ""
-            if eloc.startswith("10."):
-                doi = eloc
-            abstract = (r.get("ABSTRACT") or "")[:1200]
-            out.append({
-                "id":          f"pubmed_{r.get('PUBMED_ID','')}",
-                "text":        f"Title: {r.get('ARTICLE_TITLE','')}\n\nAbstract: {abstract}",
-                "similarity":  None,
-                "source_file": "PubMed",
-                "title":       r.get("ARTICLE_TITLE") or "",
-                "authors":     r.get("FIRST_AUTHOR_AFFILIATION") or "",
-                "published":   str(r.get("PUBMED_PUB_YEAR") or ""),
-                "doi":         doi,
-                "journal":     r.get("JOURNAL_TITLE") or "",
-                "mesh_terms":  r.get("MESH_TERMS") or "",
-                "page_reference": "",
-                "summary":     "",
-            })
-        return out
-    except Exception as e:
-        logging.warning(f"PubMed search failed: {e}")
-        return []
-    finally:
-        cur.close()
-
-
 # ── Custom GPT Action endpoint ────────────────────────────────────────────────
 class _QueryRequest(BaseModel):
     query_text: str
     top_k: int = 15
-    include_pubmed: bool = True
 
 @app.post("/query")
 async def query_endpoint(req: _QueryRequest):
     """Standard JSON endpoint for ChatGPT Custom GPT Actions."""
-    rag_sources = retrieve_context(req.query_text, req.top_k)
-    pubmed_sources = search_pubmed(req.query_text, top_k=5) if req.include_pubmed else []
-    all_sources = rag_sources + pubmed_sources
-
+    sources = retrieve_context(req.query_text, req.top_k)
     context_parts = []
-    for i, s in enumerate(all_sources):
+    for i, s in enumerate(sources):
         label = s["title"] or s["source_file"] or f"Document {i+1}"
-        src_tag = f"[PubMed]" if s.get("source_file") == "PubMed" else f"[Library]"
-        context_parts.append(f"[Source {i+1} {src_tag}: {label}]\n{s['text'][:1200]}")
+        context_parts.append(f"[Source {i+1}: {label}]\n{s['text'][:1200]}")
     context_text = "\n\n---\n\n".join(context_parts)
-
     client = OpenAI(api_key=OPENAI_API_KEY)
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -611,7 +549,7 @@ async def query_endpoint(req: _QueryRequest):
         max_tokens=1500,
     )
     answer = resp.choices[0].message.content or ""
-    return {"answer": answer, "context": all_sources, "rag_count": len(rag_sources), "pubmed_count": len(pubmed_sources)}
+    return {"answer": answer, "context": sources}
 
 # ── Status ────────────────────────────────────────────────────────────────────
 @app.get("/status")
