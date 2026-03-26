@@ -15,7 +15,7 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" />
-            <span className="text-xl">AI Content Platform</span>
+            <span className="text-xl">AI Content Platform - Powered by SYN10X</span>
           </div>
           
           <nav className="flex gap-2">
