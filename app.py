@@ -573,7 +573,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Syneos RAG Assistant</title>
+<title>ASUNDEXIAN KNOWLEDGE - Powered by SYN10X</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
 :root {
@@ -815,7 +815,7 @@ table.lib td{padding:10px 14px;vertical-align:top}
   <div class="sidebar-top">
     <div class="brand">
       <div class="brand-icon">S</div>
-      <div class="brand-name">Syneos Health<span>RAG Assistant</span></div>
+      <div class="brand-name">ASUNDEXIAN KNOWLEDGE<span>Powered by SYN10X</span></div>
     </div>
     <nav class="nav">
       <button class="nav-btn active" id="nav-chat" onclick="switchView('chat')">

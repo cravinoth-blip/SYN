@@ -46,8 +46,8 @@ export function Layout() {
           </div>
           {!collapsed && (
             <div>
-              <div className="text-white" style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em', lineHeight: 1.2 }}>Syneos RAG</div>
-              <div className="text-slate-400" style={{ fontSize: '11px' }}>Research Assistant</div>
+              <div className="text-white" style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em', lineHeight: 1.2 }}>ASUNDEXIAN KNOWLEDGE</div>
+              <div className="text-slate-400" style={{ fontSize: '11px' }}>Powered by SYN10X</div>
             </div>
           )}
         </div>
