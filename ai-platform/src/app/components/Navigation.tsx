@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router';
 import { Button } from './ui/button';
-import { Sparkles, Database } from 'lucide-react';
+import { Sparkles, Database, GitCompare } from 'lucide-react';
 
 export function Navigation() {
   const navigate = useNavigate();
@@ -8,6 +8,7 @@ export function Navigation() {
 
   const isGeneratorActive = location.pathname === '/' || location.pathname.startsWith('/generate');
   const isKnowledgeActive = location.pathname.startsWith('/knowledge');
+  const isPptxActive = location.pathname.startsWith('/pptx-compare');
 
   return (
     <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -32,6 +33,13 @@ export function Navigation() {
             >
               <Database className="h-4 w-4 mr-2" />
               Knowledge Base
+            </Button>
+            <Button
+              variant={isPptxActive ? 'default' : 'ghost'}
+              onClick={() => navigate('/pptx-compare')}
+            >
+              <GitCompare className="h-4 w-4 mr-2" />
+              PPTX Comparator
             </Button>
           </nav>
         </div>

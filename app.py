@@ -45,7 +45,8 @@ if _env_path.exists():
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # ── Snowflake ──────────────────────────────────────────────────────────────────
-TABLE_NAME = "RAG_DOCUMENTS"
+TABLE_NAME      = "RAG_DOCUMENTS"
+QC_RULES_TABLE  = "QC_RULES"
 
 _sf_conn = None
 
@@ -141,8 +142,45 @@ def retrieve_context(query: str, top_k: int = 8) -> list[dict]:
     cur.close()
     return out
 
+def retrieve_qc_rules(query: str, top_k: int = 8) -> list[dict]:
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    resp = client.embeddings.create(input=[query], model="text-embedding-3-small")
+    embedding_json = json.dumps(resp.data[0].embedding)
+    conn = get_sf_conn()
+    cur = conn.cursor()
+    cur.execute(f"""
+        SELECT RULE_ID, CATEGORY, RULE_TEXT, SOURCE, ACTIVE, RULE_GROUP,
+               VECTOR_COSINE_SIMILARITY(
+                   EMBEDDING_VECTOR,
+                   PARSE_JSON(%s)::VECTOR(FLOAT, 1536)
+               ) AS SCORE
+        FROM {QC_RULES_TABLE}
+        WHERE EMBEDDING_VECTOR IS NOT NULL
+        ORDER BY SCORE DESC
+        LIMIT %s
+    """, (embedding_json, top_k))
+    cols = [d[0] for d in cur.description]
+    out = []
+    for row in cur.fetchall():
+        r = dict(zip(cols, row))
+        out.append({
+            "rule_id":    r.get("RULE_ID", "") or "",
+            "category":   r.get("CATEGORY", "") or "",
+            "text":       r.get("RULE_TEXT", "") or "",
+            "source":     r.get("SOURCE", "") or "",
+            "active":     r.get("ACTIVE", "") or "",
+            "rule_group": r.get("RULE_GROUP", "") or "",
+            "similarity": round(float(r.get("SCORE", 0) or 0), 4),
+        })
+    cur.close()
+    return out
+
 # ── FastAPI ───────────────────────────────────────────────────────────────────
 app = FastAPI(title="RAG Chat")
+
+# PPTX Comparator router
+from pptx_router import router as pptx_router
+app.include_router(pptx_router)
 logging.basicConfig(level=logging.WARNING)
 
 _allowed_origins = [
@@ -165,6 +203,18 @@ class ChatRequest(BaseModel):
     message: str
     history: list[dict] = []
     top_k:   int = 8
+
+QC_SYSTEM_PROMPT = """You are a QC (Quality Control) and style guide assistant for Syneos Health medical communications.
+You have access to the official ASUNDEXIAN style guide rules.
+
+When answering:
+1. Cite the specific rule ID (e.g., SPELL-001) when referencing a rule
+2. Quote the exact rule text when it is helpful
+3. If multiple rules apply, list them clearly
+4. If no rule directly addresses the question, say so
+
+Retrieved QC rules:
+{context}"""
 
 SYSTEM_PROMPT = """You are a knowledgeable medical and scientific research assistant for Syneos Health, \
 with access to a curated library of scientific papers, clinical studies, and healthcare documents.
@@ -189,6 +239,40 @@ async def chat_stream(req: ChatRequest):
         context_parts.append(f"[Source {i+1}: {label}]\n{s['text'][:1200]}")
     context_text = "\n\n---\n\n".join(context_parts)
     messages = [{"role": "system", "content": SYSTEM_PROMPT.format(context=context_text)}]
+    for h in req.history[-12:]:
+        messages.append({"role": h["role"], "content": h["content"]})
+    messages.append({"role": "user", "content": req.message})
+
+    async def generate():
+        yield "data: " + json.dumps({"type": "sources", "sources": sources}) + "\n\n"
+        try:
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            stream = client.chat.completions.create(
+                model="gpt-4o-mini", messages=messages, stream=True,
+                temperature=0.2, max_tokens=1500,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield "data: " + json.dumps({"type": "chunk", "text": delta}) + "\n\n"
+        except Exception as e:
+            yield "data: " + json.dumps({"type": "error", "message": str(e)}) + "\n\n"
+        yield "data: " + json.dumps({"type": "done"}) + "\n\n"
+
+    return StreamingResponse(
+        generate(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+# ── QC Rules chat endpoint ────────────────────────────────────────────────────
+@app.post("/chat/qc/stream")
+async def chat_qc_stream(req: ChatRequest):
+    sources = retrieve_qc_rules(req.message, req.top_k)
+    context_parts = []
+    for i, s in enumerate(sources):
+        context_parts.append(f"[{s['rule_id']} – {s['category']}]\n{s['text']}")
+    context_text = "\n\n---\n\n".join(context_parts)
+    messages = [{"role": "system", "content": QC_SYSTEM_PROMPT.format(context=context_text)}]
     for h in req.history[-12:]:
         messages.append({"role": h["role"], "content": h["content"]})
     messages.append({"role": "user", "content": req.message})
@@ -827,6 +911,9 @@ table.lib td{padding:10px 14px;vertical-align:top}
       <button class="nav-btn" id="nav-library" onclick="switchView('library')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Document Library
       </button>
+      <button class="nav-btn" id="nav-qc" onclick="switchView('qc')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>QC Rules
+      </button>
     </nav>
     <button class="new-btn" onclick="newChat()">
       <svg width="13" height="13" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.8" fill="none">
@@ -941,6 +1028,41 @@ table.lib td{padding:10px 14px;vertical-align:top}
     </div>
   </div>
 
+  <!-- QC RULES VIEW -->
+  <div class="view" id="view-qc" style="overflow:hidden">
+    <div id="qc-chat">
+      <div class="welcome" id="qc-welcome">
+        <div style="width:52px;height:52px;background:linear-gradient(135deg,#E87722,#CC2229);
+                    border-radius:50%;display:flex;align-items:center;justify-content:center;
+                    font-size:22px;margin-bottom:16px">&#x2714;</div>
+        <h1>QC Rules Assistant</h1>
+        <p>Ask about style, grammar, punctuation, formatting, or any ASUNDEXIAN QC rules.</p>
+        <div class="chips">
+          <div class="chip" onclick="askQc(this.textContent)">How should I format a p-value?</div>
+          <div class="chip" onclick="askQc(this.textContent)">When do I hyphenate compound adjectives?</div>
+          <div class="chip" onclick="askQc(this.textContent)">How do I cite references in slide footnotes?</div>
+          <div class="chip" onclick="askQc(this.textContent)">US vs UK spelling rules</div>
+          <div class="chip" onclick="askQc(this.textContent)">How to format confidence intervals?</div>
+          <div class="chip" onclick="askQc(this.textContent)">Rules for abbreviations in slide decks</div>
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-wrap">
+        <div style="position:relative">
+          <textarea id="qc-q" rows="1" placeholder="Ask a QC or style question&#8230;"></textarea>
+          <button id="qc-send-btn" onclick="sendQcMsg()"
+                  style="position:absolute;right:9px;bottom:7px;width:33px;height:33px;
+                         background:var(--orange);border:none;border-radius:8px;cursor:pointer;
+                         display:flex;align-items:center;justify-content:center;transition:background .15s">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="hint">Enter to send &middot; Shift+Enter for new line</div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -952,10 +1074,24 @@ const btn     = document.getElementById('send-btn');
 const welcome = document.getElementById('welcome');
 const histEl  = document.getElementById('history');
 
+const qcChatEl  = document.getElementById('qc-chat');
+const qcInput   = document.getElementById('qc-q');
+const qcBtn     = document.getElementById('qc-send-btn');
+const qcWelcome = document.getElementById('qc-welcome');
+
+// Style the QC textarea the same as the main one
+qcInput.style.cssText = `width:100%;padding:12px 50px 12px 14px;background:var(--surface);
+  border:1px solid #444;border-radius:14px;color:var(--text);font-size:.93rem;
+  font-family:inherit;outline:none;resize:none;line-height:1.55;
+  min-height:48px;max-height:180px;transition:border-color .15s`;
+qcInput.addEventListener('focus', () => qcInput.style.borderColor = 'var(--orange)');
+qcInput.addEventListener('blur',  () => qcInput.style.borderColor = '#444');
+
 let history    = [];
 let histTitles = [];
 let libDocs    = [];
 let attachedFile = null;
+let qcHistory  = [];
 
 // ── Status ────────────────────────────────────────────────────────────────────
 async function checkStatus() {
@@ -1000,7 +1136,111 @@ function newChat() {
   removeAttach();
 }
 
-function ask(text) { switchView('chat'); input.value = text; sendMsg(); }
+function ask(text)   { switchView('chat'); input.value = text; sendMsg(); }
+function askQc(text) { switchView('qc'); qcInput.value = text; sendQcMsg(); }
+
+// ── QC send ───────────────────────────────────────────────────────────────────
+qcInput.addEventListener('input', () => {
+  qcInput.style.height = 'auto';
+  qcInput.style.height = Math.min(qcInput.scrollHeight, 180) + 'px';
+});
+qcInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQcMsg(); }
+});
+
+async function sendQcMsg() {
+  const text = qcInput.value.trim();
+  if (!text || qcBtn.disabled) return;
+
+  qcInput.value = ''; qcInput.style.height = 'auto';
+  qcWelcome.style.display = 'none';
+  qcBtn.disabled = true;
+
+  // User bubble
+  const uRow = document.createElement('div');
+  uRow.className = 'row user';
+  uRow.innerHTML = '<div class="inner"><div class="avatar" style="background:#5a4fcf">U</div>' +
+    '<div class="content"><p>' + esc(text) + '</p></div></div>';
+  qcChatEl.appendChild(uRow);
+  qcChatEl.scrollTop = qcChatEl.scrollHeight;
+
+  // Bot typing bubble
+  const botRow = document.createElement('div');
+  botRow.className = 'row bot';
+  botRow.innerHTML = '<div class="inner"><div class="avatar">S</div>' +
+    '<div class="content"><div class="typing"><span></span><span></span><span></span></div></div></div>';
+  qcChatEl.appendChild(botRow);
+  qcChatEl.scrollTop = qcChatEl.scrollHeight;
+
+  const contentEl = botRow.querySelector('.content');
+  let fullText = '', sources = [], textDiv = null;
+
+  try {
+    const resp = await fetch('/chat/qc/stream', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text, history: qcHistory.slice(-12), top_k: 8})
+    });
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        let ev; try { ev = JSON.parse(part.slice(6)); } catch { continue; }
+        if (ev.type === 'sources') {
+          sources = ev.sources;
+          contentEl.innerHTML = '';
+          textDiv = document.createElement('div');
+          textDiv.className = 'cursor';
+          contentEl.appendChild(textDiv);
+        } else if (ev.type === 'chunk') {
+          fullText += ev.text;
+          if (textDiv) textDiv.innerHTML = marked.parse(fullText);
+          qcChatEl.scrollTop = qcChatEl.scrollHeight;
+        } else if (ev.type === 'done') {
+          if (textDiv) textDiv.classList.remove('cursor');
+          buildQcSourcesPanel(contentEl, sources);
+          buildActions(contentEl, fullText);
+          qcHistory.push({role:'user', content: text});
+          qcHistory.push({role:'assistant', content: fullText});
+        } else if (ev.type === 'error') {
+          contentEl.innerHTML = '<p style="color:#f87171">&#x26A0; ' + esc(ev.message) + '</p>';
+        }
+      }
+    }
+  } catch(err) {
+    contentEl.innerHTML = '<p style="color:#f87171">Network error: ' + esc(err.message) + '</p>';
+  }
+  qcBtn.disabled = false;
+  qcChatEl.scrollTop = qcChatEl.scrollHeight;
+  qcInput.focus();
+}
+
+function buildQcSourcesPanel(parent, sources) {
+  if (!sources || !sources.length) return;
+  const wrap = document.createElement('div');
+  const cards = sources.map(s => {
+    const score   = (s.similarity * 100).toFixed(1);
+    const snippet = esc((s.text || '').slice(0, 140));
+    return `<div class="src-card">
+      <div class="src-title" title="${esc(s.rule_id)}">${esc(s.rule_id)}</div>
+      <div class="src-meta">${esc(s.category)}</div>
+      <span class="src-score">${score}% match</span>
+      <div class="src-snippet">${snippet}</div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="sources-toggle" onclick="toggleSrc(this)">
+    <span class="toggle-icon">&#x25B6;</span>
+    <span>${sources.length} rule${sources.length !== 1 ? 's' : ''} retrieved</span>
+  </div>
+  <div class="sources-panel"><div class="src-grid">${cards}</div></div>`;
+  parent.appendChild(wrap);
+}
 
 function addHistory(q) {
   const label = q.length > 52 ? q.slice(0, 49) + '...' : q;

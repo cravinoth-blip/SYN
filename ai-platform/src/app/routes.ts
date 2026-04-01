@@ -4,6 +4,7 @@ import TemplateLibrary from './pages/TemplateLibrary';
 import ContentGenerator from './pages/ContentGenerator';
 import CompoundSelection from './pages/CompoundSelection';
 import KnowledgeBase from './pages/KnowledgeBase';
+import PptxComparator from './pages/PptxComparator';
 
 export const router = createBrowserRouter([
   {
@@ -25,6 +26,10 @@ export const router = createBrowserRouter([
       {
         path: 'knowledge/:compoundId',
         Component: KnowledgeBase,
+      },
+      {
+        path: 'pptx-compare',
+        Component: PptxComparator,
       },
     ],
   },
