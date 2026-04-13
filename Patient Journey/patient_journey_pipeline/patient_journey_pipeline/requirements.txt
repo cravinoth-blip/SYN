@@ -1,0 +1,19 @@
+# Core
+openai>=1.30.0
+tiktoken>=0.7.0
+
+# Vector store
+chromadb>=0.5.0
+
+# Tool dependencies
+tavily-python>=0.4.0
+requests>=2.31.0
+
+# Data & file handling
+pandas>=2.1.0
+openpyxl>=3.1.0
+python-docx>=1.1.0
+
+# Optional: better PDF ingestion for spine
+# pymupdf>=1.24.0
+# pdfplumber>=0.11.0
