@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
@@ -450,12 +450,79 @@ export default function PatientJourneyMap({ initialData }: { initialData: Journe
   const [refineTarget, setRefineTarget] = useState<{ phase: Phase; sectionKey: string } | null>(null);
   const [pendingChange, setPendingChange] = useState<{ phaseId: string; sectionKey: string; oldValue: unknown; newValue: unknown; summary: string; confidence: string; verification: string; feedback: object } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [changedSections, setChangedSections] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const showToast = (msg: string, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
+
+  const exportPDF = async () => {
+    if (!exportRef.current || isExporting) return;
+    setIsExporting(true);
+    showToast("Preparing PDF — please wait…", "info");
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const { jsPDF } = await import("jspdf");
+
+      const el = exportRef.current;
+
+      // Expand all overflow-x:auto children so full grid width is captured
+      const expanded: Array<{ node: HTMLElement; prevOverflow: string; prevWidth: string }> = [];
+      el.querySelectorAll<HTMLElement>("*").forEach((child) => {
+        const cs = window.getComputedStyle(child);
+        if (cs.overflowX === "auto" || cs.overflowX === "scroll") {
+          expanded.push({ node: child, prevOverflow: child.style.overflowX, prevWidth: child.style.width });
+          child.style.overflowX = "visible";
+          child.style.width = child.scrollWidth + "px";
+        }
+      });
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#F0F9FF",
+        width: el.scrollWidth,
+        windowWidth: el.scrollWidth,
+      });
+
+      // Restore original styles
+      expanded.forEach(({ node, prevOverflow, prevWidth }) => {
+        node.style.overflowX = prevOverflow;
+        node.style.width = prevWidth;
+      });
+
+      // Build PDF sized to content (landscape orientation)
+      const imgData = canvas.toDataURL("image/jpeg", 0.97);
+      const pxW = canvas.width;
+      const pxH = canvas.height;
+      // Use 150 DPI: 1 mm = 150/25.4 px
+      const DPI = 150;
+      const mmW = (pxW / DPI) * 25.4;
+      const mmH = (pxH / DPI) * 25.4;
+
+      const pdf = new jsPDF({
+        orientation: mmW > mmH ? "landscape" : "portrait",
+        unit: "mm",
+        format: [mmW, mmH],
+      });
+
+      pdf.addImage(imgData, "JPEG", 0, 0, mmW, mmH, undefined, "FAST");
+
+      const slug = data.disease.replace(/[^a-z0-9]/gi, "_").slice(0, 40);
+      pdf.save(`patient_journey_${slug}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+      showToast("PDF exported successfully");
+    } catch (err) {
+      console.error("PDF export error:", err);
+      showToast("PDF export failed — see console for details.", "error");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleOpenRefine = (phase: Phase, sectionKey: string) => { setRefineTarget({ phase, sectionKey }); setSelectedPhase(null); };
 
@@ -512,7 +579,7 @@ export default function PatientJourneyMap({ initialData }: { initialData: Journe
   const phaseHasChanges = (pid: string) => [...changedSections].some((k) => k.startsWith(pid + ":"));
 
   return (
-    <div style={{ fontFamily: "'Figtree','Noto Sans','Segoe UI',sans-serif", background: "#F0F9FF", minHeight: "100vh", padding: "0 0 40px" }}>
+    <div ref={exportRef} style={{ fontFamily: "'Figtree','Noto Sans','Segoe UI',sans-serif", background: "#F0F9FF", minHeight: "100vh", padding: "0 0 40px" }}>
       {toast && (
         <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 9999, padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#fff", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", background: toast.type === "error" ? "#D32F2F" : toast.type === "info" ? "#0891B2" : "#4CAF50" }}>
           {toast.msg}
@@ -540,6 +607,17 @@ export default function PatientJourneyMap({ initialData }: { initialData: Journe
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               New journey
             </a>
+            <button
+              onClick={exportPDF}
+              disabled={isExporting}
+              style={{ background: isExporting ? "#E0F2FE" : "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: isExporting ? "not-allowed" : "pointer", color: isExporting ? "#0891B2" : "#475569", display: "flex", alignItems: "center", gap: 6, transition: "all 0.15s", opacity: isExporting ? 0.75 : 1 }}
+              onMouseEnter={(e) => { if (!isExporting) { (e.currentTarget as HTMLButtonElement).style.borderColor = "#0891B2"; (e.currentTarget as HTMLButtonElement).style.color = "#0891B2"; } }}
+              onMouseLeave={(e) => { if (!isExporting) { (e.currentTarget as HTMLButtonElement).style.borderColor = "#E2E8F0"; (e.currentTarget as HTMLButtonElement).style.color = "#475569"; } }}>
+              {isExporting
+                ? <><svg width="13" height="13" viewBox="0 0 16 16" style={{ animation: "spin 1s linear infinite" }}><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeDasharray="24" strokeDashoffset="6"/></svg> Exporting…</>
+                : <><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> Export PDF</>
+              }
+            </button>
             <button onClick={() => setShowHistory(true)} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", display: "flex", alignItems: "center", gap: 6, transition: "all 0.15s" }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#0891B2"; (e.currentTarget as HTMLButtonElement).style.color = "#0891B2"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#E2E8F0"; (e.currentTarget as HTMLButtonElement).style.color = "#475569"; }}>
