@@ -1,5 +1,6 @@
 # Credentials & secrets
 .env
+.env.*
 private_key.pem
 *.pem
 *.key
@@ -8,6 +9,12 @@ private_key.pem
 .venv/
 venv/
 env/
+.uv-python/
+.uv-cache/
+.tmp-uv-cache/
+.local/
+.ruff_cache/
+.tmp-brooks-lint/
 
 # ChromaDB (local vector store - too large for git)
 chroma_db/
@@ -38,9 +45,28 @@ Thumbs.db
 .idea/
 
 # Frontend build artifacts
+node_modules/
+**/node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.env.local
+.next/
+**/.next/
+dist/
+build/
+
+# Runtime logs and local outputs
+*.log
+*.run.log
+*.dev.log
+*.out.log
+*.err.log
+*.db
+**/test-results/
+**/pytest-cache-files-*/
+**/*.egg-info/
+outputs/
+workspace/
 
 # Claude Code memory (local only)
 .claude/

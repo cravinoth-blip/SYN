@@ -1,0 +1,22 @@
+{
+  "name": "stratergic-mapping",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "npm --workspace apps/web run dev",
+    "build": "npm --workspace apps/web run build",
+    "lint": "npm --workspace apps/web run lint",
+    "test": "npm --workspace apps/web run test",
+    "api:dev": "uvicorn app.main:app --reload --host 127.0.0.1 --port 8005 --app-dir apps/api",
+    "api:test": "pytest apps/api/tests",
+    "compose:up": "docker compose up --build",
+    "compose:down": "docker compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
