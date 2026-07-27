@@ -40,7 +40,14 @@ GRANT USAGE ON CORTEX SEARCH SERVICE
 - `GET /metadata` with `X-API-Key`
 - `POST /search` with `query` and `limit`
 - `POST /query/` with `query_text` and `top_k`
+- `POST /research/query/` with `source`, `query_text`, and `top_k`
 - `GET /docs`
+
+For dynamic public research, `source` can be `pubmed` or `clinical_trials`.
+The official discovery API finds identifiers from the user's topic, which are
+then hydrated from `COMPILE_ADD_ON.PUBMED_DETAILS.PUBLICATIONS` or
+`COMPILE_ADD_ON.CLINICAL_TRIAL_DETAILS`. This avoids scanning or copying the
+full 184-million-row publications table.
 
 The Custom GPT artifacts are `custom-gpt-action.json` and
 `custom-gpt-instructions.txt`.

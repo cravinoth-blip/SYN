@@ -88,6 +88,70 @@
           }
         }
       }
+    },
+    "/research/query/": {
+      "post": {
+        "operationId": "searchPfizerResearch",
+        "summary": "Search PubMed or clinical trials",
+        "description": "Uses the user query to discover relevant IDs, then returns authoritative records from COMPILE_ADD_ON.PUBMED_DETAILS.PUBLICATIONS or CLINICAL_TRIAL_DETAILS.",
+        "x-openai-isConsequential": false,
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "pubmed",
+                      "clinical_trials"
+                    ],
+                    "description": "External governed source to query."
+                  },
+                  "query_text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Dynamic topic supplied or implied by the user."
+                  },
+                  "top_k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 5
+                  }
+                },
+                "required": [
+                  "source",
+                  "query_text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authoritative PubMed or clinical-trial records from Snowflake."
+          },
+          "401": {
+            "description": "Missing or invalid API key."
+          },
+          "422": {
+            "description": "Invalid source or request body."
+          },
+          "502": {
+            "description": "Discovery or Snowflake lookup failed."
+          }
+        }
+      }
     }
   },
   "components": {
