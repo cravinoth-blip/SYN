@@ -1,0 +1,6 @@
+name: knowledge_hub_environment
+channels:
+  - snowflake
+dependencies:
+  - streamlit=1.52.2
+  - pandas
