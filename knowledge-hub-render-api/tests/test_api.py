@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 import main
 from knowledge_search import build_filter
+import research_search
 
 
 class FakeSearchClient:
@@ -20,9 +21,15 @@ class FakeSearchClient:
         )
 
 
+class FakeResearchClient:
+    def search(self, **kwargs):
+        return ([{"PUBMED_ID": 123, "ARTICLE_TITLE": "Evidence"}], 55)
+
+
 def setup_function():
     main.app.dependency_overrides.clear()
     main.get_client.cache_clear()
+    main.get_research_client.cache_clear()
 
 
 def test_health_does_not_require_credentials():
@@ -75,3 +82,51 @@ def test_filter_is_allow_listed():
             {"@eq": {"DOCUMENT_TYPE": "PDF"}},
         ]
     }
+
+
+def test_research_query_returns_snowflake_records(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
+    monkeypatch.setattr(main, "get_research_client", lambda: FakeResearchClient())
+
+    response = TestClient(main.app).post(
+        "/research/query/",
+        headers={"X-API-Key": "correct-key"},
+        json={"source": "pubmed", "query_text": "inotuzumab", "top_k": 3},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["context"][0]["PUBMED_ID"] == 123
+
+
+def test_research_query_rejects_unknown_source(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
+    response = TestClient(main.app).post(
+        "/research/query/",
+        headers={"X-API-Key": "correct-key"},
+        json={"source": "arbitrary_table", "query_text": "oncology"},
+    )
+    assert response.status_code == 422
+
+
+def test_dynamic_discovery_extracts_approved_identifiers(monkeypatch):
+    monkeypatch.setattr(
+        research_search,
+        "_get_json",
+        lambda *args, **kwargs: {"esearchresult": {"idlist": ["123", "bad"]}},
+    )
+    assert research_search._discover_pubmed_ids("topic", 5) == [123]
+
+    monkeypatch.setattr(
+        research_search,
+        "_get_json",
+        lambda *args, **kwargs: {
+            "studies": [
+                {
+                    "protocolSection": {
+                        "identificationModule": {"nctId": "NCT00000001"}
+                    }
+                }
+            ]
+        },
+    )
+    assert research_search._discover_trial_ids("topic", 5) == ["NCT00000001"]

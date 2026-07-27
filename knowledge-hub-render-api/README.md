@@ -75,6 +75,26 @@ Content-Type: application/json
 }
 ```
 
+Dynamic public research:
+
+```http
+POST /research/query/
+X-API-Key: <KNOWLEDGE_HUB_API_KEY>
+Content-Type: application/json
+
+{
+  "source": "pubmed",
+  "query_text": "a topic defined by the user",
+  "top_k": 5
+}
+```
+
+`source` can be `pubmed` or `clinical_trials`. The official discovery API
+finds relevant identifiers, which are then hydrated from
+`COMPILE_ADD_ON.PUBMED_DETAILS.PUBLICATIONS` or
+`COMPILE_ADD_ON.CLINICAL_TRIAL_DETAILS`. This avoids scanning or copying the
+full 184-million-row publications table.
+
 Interactive OpenAPI documentation is available at `/docs`.
 
 ## Local validation

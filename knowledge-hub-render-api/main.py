@@ -5,13 +5,14 @@ from __future__ import annotations
 import hmac
 import os
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
 from knowledge_search import ConfigurationError, KnowledgeSearchClient, SearchSettings
+from research_search import ResearchSearchClient
 
 
 app = FastAPI(
@@ -62,9 +63,22 @@ class CompatibleQueryRequest(BaseModel):
     evidence_type: str | None = Field(default=None, max_length=100)
 
 
+class ResearchQueryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: Literal["pubmed", "clinical_trials"]
+    query_text: str = Field(min_length=1, max_length=1_000)
+    top_k: int = Field(default=5, ge=1, le=10)
+
+
 @lru_cache(maxsize=1)
 def get_client() -> KnowledgeSearchClient:
     return KnowledgeSearchClient(SearchSettings.from_environment())
+
+
+@lru_cache(maxsize=1)
+def get_research_client() -> ResearchSearchClient:
+    return ResearchSearchClient(SearchSettings.from_environment())
 
 
 def require_api_key(
@@ -154,3 +168,34 @@ def compatible_query(request: CompatibleQueryRequest) -> dict:
         )
     )
     return {"context": response["results"], **response}
+
+
+@app.post(
+    "/research/query/",
+    dependencies=[Depends(require_api_key)],
+    tags=["research"],
+)
+def research_query(request: ResearchQueryRequest) -> dict:
+    try:
+        results, latency_ms = get_research_client().search(
+            source=request.source,
+            query=request.query_text,
+            limit=request.top_k,
+        )
+    except ConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Research search failed: {type(exc).__name__}",
+        ) from exc
+    return {
+        "source": request.source,
+        "query": request.query_text,
+        "result_count": len(results),
+        "latency_ms": latency_ms,
+        "context": results,
+    }
