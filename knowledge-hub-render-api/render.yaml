@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: knowledge-hub-search-api
+    runtime: python
+    rootDir: knowledge-hub-render-api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: SNOWFLAKE_WAREHOUSE
+        value: WH_COMMUNICATIONS__EU__DER
+      - key: SNOWFLAKE_DATABASE
+        value: COMMUNICATIONS__EU__DER__DEV
+      - key: SNOWFLAKE_SCHEMA
+        value: KNOWLEDGE_HUB
+      - key: SNOWFLAKE_CORTEX_SEARCH_SERVICE
+        value: KNOWLEDGE_SEARCH
+      - key: SNOWFLAKE_PRIVATE_KEY_PATH
+        value: /etc/secrets/private_key.pem
+      - key: SNOWFLAKE_ACCOUNT
+        sync: false
+      - key: SNOWFLAKE_USER
+        sync: false
+      - key: SNOWFLAKE_ROLE
+        sync: false
+      - key: SNOWFLAKE_PRIVATE_KEY_PASSPHRASE
+        sync: false
+      - key: KNOWLEDGE_HUB_API_KEY
+        generateValue: true
