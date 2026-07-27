@@ -1,0 +1,167 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PFIZER ANTIINF Knowledge Search",
+    "description": "Searches the isolated PFIZER ANTIINF Snowflake knowledge corpus.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://pfizer-antiinf-search-api.onrender.com"
+    }
+  ],
+  "paths": {
+    "/query/": {
+      "post": {
+        "operationId": "searchPfizerAntiinf",
+        "summary": "Search PFIZER ANTIINF evidence",
+        "description": "Semantically searches published evidence indexed only in COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF. Use CHUNK_TEXT as evidence. The backend fixes the database, schema and service.",
+        "x-openai-isConsequential": false,
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query_text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000,
+                    "description": "A focused semantic query for PFIZER ANTIINF evidence."
+                  },
+                  "top_k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8,
+                    "default": 3,
+                    "description": "Number of evidence passages to retrieve."
+                  }
+                },
+                "required": [
+                  "query_text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Relevant PFIZER ANTIINF passages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "context": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EvidencePassage"
+                      }
+                    }
+                  },
+                  "required": [
+                    "context"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key."
+          },
+          "422": {
+            "description": "Invalid request body."
+          },
+          "502": {
+            "description": "Snowflake Cortex Search failed."
+          },
+          "503": {
+            "description": "Search service configuration is unavailable."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
+    "schemas": {
+      "EvidencePassage": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "CHUNK_ID": {
+            "type": "string"
+          },
+          "CHUNK_TEXT": {
+            "type": "string",
+            "description": "The retrieved passage and primary evidence."
+          },
+          "DOCUMENT_ID": {
+            "type": "string"
+          },
+          "TITLE": {
+            "type": "string"
+          },
+          "ORIGINAL_FILENAME": {
+            "type": "string"
+          },
+          "PAGE_FROM": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "PAGE_TO": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "SECTION_PATH": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "DOCUMENT_TYPE": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "LANGUAGE": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "EVIDENCE_TYPE": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "CHUNK_ID",
+          "CHUNK_TEXT",
+          "DOCUMENT_ID"
+        ]
+      }
+    }
+  }
+}

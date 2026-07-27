@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: pfizer-antiinf-search-api
+    runtime: python
+    rootDir: pfizer-antiinf-render-api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: SNOWFLAKE_WAREHOUSE
+        value: WH_COMMUNICATIONS__EU__DER
+      - key: SNOWFLAKE_PRIVATE_KEY_PATH
+        value: /etc/secrets/private_key.pem
+      - key: SNOWFLAKE_ACCOUNT
+        sync: false
+      - key: SNOWFLAKE_USER
+        sync: false
+      - key: SNOWFLAKE_ROLE
+        sync: false
+      - key: SNOWFLAKE_PRIVATE_KEY_PASSPHRASE
+        sync: false
+      - key: PFIZER_ANTIINF_API_KEY
+        generateValue: true
