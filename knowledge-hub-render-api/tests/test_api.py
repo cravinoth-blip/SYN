@@ -60,6 +60,20 @@ def test_search_returns_cortex_results(monkeypatch):
     assert response.json()["results"][0]["CHUNK_ID"] == "chunk-1"
 
 
+def test_search_accepts_legacy_custom_header(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
+    monkeypatch.setattr(main, "get_client", lambda: FakeSearchClient())
+
+    response = TestClient(main.app).post(
+        "/search",
+        headers={"KNOWLEDGE_HUB_API_KEY": "correct-key"},
+        json={"query": "oncology", "limit": 5},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["result_count"] == 1
+
+
 def test_compatible_query_endpoint(monkeypatch):
     monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
     monkeypatch.setattr(main, "get_client", lambda: FakeSearchClient())

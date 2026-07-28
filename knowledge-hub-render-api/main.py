@@ -82,7 +82,11 @@ def get_research_client() -> ResearchSearchClient:
 
 
 def require_api_key(
-    supplied_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+    legacy_api_key: Annotated[
+        str | None,
+        Header(alias="KNOWLEDGE_HUB_API_KEY"),
+    ] = None,
 ) -> None:
     expected_key = os.getenv("KNOWLEDGE_HUB_API_KEY", "")
     if not expected_key:
@@ -90,6 +94,7 @@ def require_api_key(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="KNOWLEDGE_HUB_API_KEY is not configured",
         )
+    supplied_key = x_api_key or legacy_api_key
     if not supplied_key or not hmac.compare_digest(supplied_key, expected_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
