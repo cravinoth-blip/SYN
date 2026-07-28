@@ -1,0 +1,209 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "APERTURECI Governed Evidence Search",
+    "description": "Searches fixed, governed evidence surfaces owned by the APERTURECI Snowflake workspace.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://knowledge-hub-search-api.onrender.com"
+    }
+  ],
+  "paths": {
+    "/apertureci/query/": {
+      "post": {
+        "operationId": "searchApertureCI",
+        "summary": "Search governed APERTURECI evidence",
+        "description": "Searches allow-listed APERTURECI evidence: DEXI vectors, publications, clinical trials, competitor maps, trial comparisons, and published Knowledge chunks.",
+        "x-openai-isConsequential": false,
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "dexi",
+                      "publications",
+                      "clinical_trials",
+                      "competitor_maps",
+                      "trial_comparisons",
+                      "knowledge"
+                    ],
+                    "default": "all",
+                    "description": "Governed APERTURECI evidence surface to search."
+                  },
+                  "query_text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "Focused topic, product, disease, trial, endpoint, competitor, or strategic evidence query."
+                  },
+                  "top_k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8,
+                    "default": 4,
+                    "description": "Maximum records returned from each selected evidence surface."
+                  },
+                  "context_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 255,
+                    "description": "Optional APERTURECI context ID when the user explicitly wants one saved context."
+                  }
+                },
+                "required": [
+                  "source",
+                  "query_text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Governed evidence and any source-level retrieval warnings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "result_count": {
+                      "type": "integer"
+                    },
+                    "latency_ms": {
+                      "type": "integer"
+                    },
+                    "source_errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "source": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "source",
+                          "error"
+                        ]
+                      }
+                    },
+                    "context": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ApertureEvidence"
+                      }
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "query",
+                    "result_count",
+                    "source_errors",
+                    "context"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key."
+          },
+          "422": {
+            "description": "Invalid source or request body."
+          },
+          "502": {
+            "description": "APERTURECI retrieval could not connect to Snowflake."
+          },
+          "503": {
+            "description": "Required service configuration is unavailable."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
+    "schemas": {
+      "ApertureEvidence": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "SOURCE_TYPE": {
+            "type": "string",
+            "description": "Governed source category."
+          },
+          "RECORD_ID": {
+            "type": "string",
+            "description": "Stable source record or chunk identifier."
+          },
+          "TITLE": {
+            "type": "string"
+          },
+          "TEXT": {
+            "type": "string",
+            "description": "Primary evidence text. Use this as the factual basis."
+          },
+          "URL": {
+            "type": "string",
+            "description": "PubMed, DOI, or ClinicalTrials.gov URL when available."
+          },
+          "CONTEXT_ID": {
+            "type": "string",
+            "description": "APERTURECI saved-context identifier when applicable."
+          },
+          "METADATA": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "SCORE": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true,
+            "description": "Cortex relevance scoring data when available."
+          }
+        },
+        "required": [
+          "SOURCE_TYPE",
+          "RECORD_ID",
+          "TITLE",
+          "TEXT"
+        ]
+      }
+    }
+  }
+}

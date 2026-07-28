@@ -26,10 +26,27 @@ class FakeResearchClient:
         return ([{"PUBMED_ID": 123, "ARTICLE_TITLE": "Evidence"}], 55)
 
 
+class FakeApertureCIClient:
+    def search(self, **kwargs):
+        return (
+            [
+                {
+                    "SOURCE_TYPE": "DEXI",
+                    "RECORD_ID": "dexi-1",
+                    "TITLE": "Asundexian evidence",
+                    "TEXT": "Evidence passage",
+                }
+            ],
+            [],
+            61,
+        )
+
+
 def setup_function():
     main.app.dependency_overrides.clear()
     main.get_client.cache_clear()
     main.get_research_client.cache_clear()
+    main.get_apertureci_client.cache_clear()
 
 
 def test_health_does_not_require_credentials():
@@ -144,3 +161,28 @@ def test_dynamic_discovery_extracts_approved_identifiers(monkeypatch):
         },
     )
     assert research_search._discover_trial_ids("topic", 5) == ["NCT00000001"]
+
+
+def test_apertureci_query_returns_governed_evidence(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
+    monkeypatch.setattr(main, "get_apertureci_client", lambda: FakeApertureCIClient())
+
+    response = TestClient(main.app).post(
+        "/apertureci/query/",
+        headers={"X-API-Key": "correct-key"},
+        json={"source": "all", "query_text": "asundexian stroke", "top_k": 4},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["context"][0]["SOURCE_TYPE"] == "DEXI"
+    assert response.json()["source_errors"] == []
+
+
+def test_apertureci_query_rejects_arbitrary_source(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
+    response = TestClient(main.app).post(
+        "/apertureci/query/",
+        headers={"X-API-Key": "correct-key"},
+        json={"source": "arbitrary_table", "query_text": "asundexian"},
+    )
+    assert response.status_code == 422

@@ -11,6 +11,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
+from apertureci_search import ApertureCISearchClient, ApertureSource
 from knowledge_search import ConfigurationError, KnowledgeSearchClient, SearchSettings
 from research_search import ResearchSearchClient
 
@@ -71,6 +72,15 @@ class ResearchQueryRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=10)
 
 
+class ApertureQueryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: ApertureSource = "all"
+    query_text: str = Field(min_length=1, max_length=1_000)
+    top_k: int = Field(default=4, ge=1, le=8)
+    context_id: str | None = Field(default=None, max_length=255)
+
+
 @lru_cache(maxsize=1)
 def get_client() -> KnowledgeSearchClient:
     return KnowledgeSearchClient(SearchSettings.from_environment())
@@ -79,6 +89,11 @@ def get_client() -> KnowledgeSearchClient:
 @lru_cache(maxsize=1)
 def get_research_client() -> ResearchSearchClient:
     return ResearchSearchClient(SearchSettings.from_environment())
+
+
+@lru_cache(maxsize=1)
+def get_apertureci_client() -> ApertureCISearchClient:
+    return ApertureCISearchClient(SearchSettings.from_environment())
 
 
 def require_api_key(
@@ -202,5 +217,38 @@ def research_query(request: ResearchQueryRequest) -> dict:
         "query": request.query_text,
         "result_count": len(results),
         "latency_ms": latency_ms,
+        "context": results,
+    }
+
+
+@app.post(
+    "/apertureci/query/",
+    dependencies=[Depends(require_api_key)],
+    tags=["apertureci"],
+)
+def apertureci_query(request: ApertureQueryRequest) -> dict:
+    try:
+        results, source_errors, latency_ms = get_apertureci_client().search(
+            source=request.source,
+            query=request.query_text,
+            limit=request.top_k,
+            context_id=request.context_id,
+        )
+    except ConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"APERTURECI search failed: {type(exc).__name__}",
+        ) from exc
+    return {
+        "source": request.source,
+        "query": request.query_text,
+        "result_count": len(results),
+        "latency_ms": latency_ms,
+        "source_errors": source_errors,
         "context": results,
     }

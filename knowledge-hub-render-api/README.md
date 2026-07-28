@@ -97,6 +97,29 @@ full 184-million-row publications table.
 
 Interactive OpenAPI documentation is available at `/docs`.
 
+## APERTURECI Custom GPT
+
+The fixed-schema APERTURECI endpoint is:
+
+```http
+POST /apertureci/query/
+X-API-Key: <KNOWLEDGE_HUB_API_KEY>
+Content-Type: application/json
+
+{
+  "source": "all",
+  "query_text": "asundexian ischemic stroke competitive evidence",
+  "top_k": 4
+}
+```
+
+Allowed sources are `all`, `dexi`, `publications`, `clinical_trials`,
+`competitor_maps`, `trial_comparisons`, and `knowledge`. Arbitrary table names
+and SQL are not accepted. Custom GPT artifacts are:
+
+- `apertureci-custom-gpt-action.json`
+- `apertureci-custom-gpt-instructions.txt`
+
 ## Local validation
 
 Copy `.env.example` values into your shell and point
