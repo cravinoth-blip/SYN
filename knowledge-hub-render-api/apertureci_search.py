@@ -21,6 +21,18 @@ ApertureSource = Literal[
 
 DATABASE = "COMMUNICATIONS__EU__DER__DEV"
 SCHEMA = "APERTURECI"
+PRIMARY_ASSET = "ASUNDEXIAN"
+SOLE_COMPETITOR = "MILVEXIAN"
+SCOPE_TERMS = (
+    "asundexian",
+    "bay 2433334",
+    "bay2433334",
+    "milvexian",
+    "bms-986177",
+    "bms 986177",
+    "jnj-70033093",
+    "jnj 70033093",
+)
 ALLOWED_SOURCES = (
     "dexi",
     "publications",
@@ -58,6 +70,17 @@ def query_terms(query: str) -> list[str]:
         seen.add(term)
         terms.append(term)
     return terms[:10]
+
+
+def validate_scope_query(query: str) -> str:
+    """Reject requests that do not identify the fixed asset comparison."""
+    normalized = " ".join(query.lower().split())
+    if not any(term in normalized for term in SCOPE_TERMS):
+        raise ValueError(
+            "APERTURECI only supports ASUNDEXIAN and MILVEXIAN. "
+            "Include at least one of those assets in query_text."
+        )
+    return query.strip()
 
 
 def _rows(cursor: Any) -> list[dict[str, Any]]:
@@ -130,6 +153,7 @@ class ApertureCISearchClient:
         context_id: str | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, str]], int]:
         started = time.perf_counter()
+        query = validate_scope_query(query)
         if source != "all" and source not in ALLOWED_SOURCES:
             raise ValueError(f"Unsupported APERTURECI source: {source}")
         safe_limit = max(1, min(int(limit), 8))

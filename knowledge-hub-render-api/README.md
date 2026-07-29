@@ -99,6 +99,13 @@ Interactive OpenAPI documentation is available at `/docs`.
 
 ## APERTURECI Custom GPT
 
+The APERTURECI Action is asset-scoped:
+
+- primary asset: `ASUNDEXIAN`
+- sole competitor: `MILVEXIAN`
+- `query_text` must explicitly include either asset or a supported development-code alias
+- other primary assets and competitors are rejected before Snowflake retrieval
+
 The fixed-schema APERTURECI endpoint is:
 
 ```http

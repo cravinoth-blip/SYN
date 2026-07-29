@@ -176,6 +176,8 @@ def test_apertureci_query_returns_governed_evidence(monkeypatch):
     assert response.status_code == 200
     assert response.json()["context"][0]["SOURCE_TYPE"] == "DEXI"
     assert response.json()["source_errors"] == []
+    assert response.json()["primary_asset"] == "ASUNDEXIAN"
+    assert response.json()["competitor"] == "MILVEXIAN"
 
 
 def test_apertureci_query_rejects_arbitrary_source(monkeypatch):
@@ -184,5 +186,30 @@ def test_apertureci_query_rejects_arbitrary_source(monkeypatch):
         "/apertureci/query/",
         headers={"X-API-Key": "correct-key"},
         json={"source": "arbitrary_table", "query_text": "asundexian"},
+    )
+    assert response.status_code == 422
+
+
+def test_apertureci_query_rejects_another_primary_asset(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
+    response = TestClient(main.app).post(
+        "/apertureci/query/",
+        headers={"X-API-Key": "correct-key"},
+        json={
+            "primary_asset": "APIXABAN",
+            "competitor": "MILVEXIAN",
+            "query_text": "apixaban evidence",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_apertureci_query_rejects_out_of_scope_query(monkeypatch):
+    monkeypatch.setenv("KNOWLEDGE_HUB_API_KEY", "correct-key")
+    monkeypatch.setattr(main, "get_apertureci_client", lambda: FakeApertureCIClient())
+    response = TestClient(main.app).post(
+        "/apertureci/query/",
+        headers={"X-API-Key": "correct-key"},
+        json={"query_text": "apixaban versus rivaroxaban"},
     )
     assert response.status_code == 422

@@ -9,9 +9,13 @@ from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from apertureci_search import ApertureCISearchClient, ApertureSource
+from apertureci_search import (
+    ApertureCISearchClient,
+    ApertureSource,
+    validate_scope_query,
+)
 from knowledge_search import ConfigurationError, KnowledgeSearchClient, SearchSettings
 from research_search import ResearchSearchClient
 
@@ -76,9 +80,16 @@ class ApertureQueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: ApertureSource = "all"
+    primary_asset: Literal["ASUNDEXIAN"] = "ASUNDEXIAN"
+    competitor: Literal["MILVEXIAN"] = "MILVEXIAN"
     query_text: str = Field(min_length=1, max_length=1_000)
     top_k: int = Field(default=4, ge=1, le=8)
     context_id: str | None = Field(default=None, max_length=255)
+
+    @field_validator("query_text")
+    @classmethod
+    def model_validate_scope(cls, value: str) -> str:
+        return validate_scope_query(value)
 
 
 @lru_cache(maxsize=1)
@@ -245,6 +256,8 @@ def apertureci_query(request: ApertureQueryRequest) -> dict:
             detail=f"APERTURECI search failed: {type(exc).__name__}",
         ) from exc
     return {
+        "primary_asset": request.primary_asset,
+        "competitor": request.competitor,
         "source": request.source,
         "query": request.query_text,
         "result_count": len(results),

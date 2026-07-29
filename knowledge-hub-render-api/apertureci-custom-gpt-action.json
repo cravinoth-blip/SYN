@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "APERTURECI Governed Evidence Search",
-    "description": "Searches fixed, governed evidence surfaces owned by the APERTURECI Snowflake workspace.",
+    "title": "APERTURECI ASUNDEXIAN vs MILVEXIAN Search",
+    "description": "Searches governed APERTURECI evidence for ASUNDEXIAN as the primary asset and MILVEXIAN as its sole competitor.",
     "version": "1.0.0"
   },
   "servers": [
@@ -14,8 +14,8 @@
     "/apertureci/query/": {
       "post": {
         "operationId": "searchApertureCI",
-        "summary": "Search governed APERTURECI evidence",
-        "description": "Searches allow-listed APERTURECI evidence: DEXI vectors, publications, clinical trials, competitor maps, trial comparisons, and published Knowledge chunks.",
+        "summary": "Search ASUNDEXIAN and MILVEXIAN evidence",
+        "description": "Searches governed evidence for ASUNDEXIAN as the primary asset and MILVEXIAN as the sole competitor across APERTURECI sources.",
         "x-openai-isConsequential": false,
         "security": [
           {
@@ -30,6 +30,22 @@
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
+                  "primary_asset": {
+                    "type": "string",
+                    "enum": [
+                      "ASUNDEXIAN"
+                    ],
+                    "default": "ASUNDEXIAN",
+                    "description": "Fixed primary asset. Always use ASUNDEXIAN."
+                  },
+                  "competitor": {
+                    "type": "string",
+                    "enum": [
+                      "MILVEXIAN"
+                    ],
+                    "default": "MILVEXIAN",
+                    "description": "Fixed sole competitor. Always use MILVEXIAN."
+                  },
                   "source": {
                     "type": "string",
                     "enum": [
@@ -48,7 +64,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 1000,
-                    "description": "Focused topic, product, disease, trial, endpoint, competitor, or strategic evidence query."
+                    "description": "Focused evidence query that explicitly includes ASUNDEXIAN, MILVEXIAN, or a known development-code alias."
                   },
                   "top_k": {
                     "type": "integer",
@@ -67,6 +83,8 @@
                   }
                 },
                 "required": [
+                  "primary_asset",
+                  "competitor",
                   "source",
                   "query_text"
                 ]
@@ -83,6 +101,18 @@
                   "type": "object",
                   "additionalProperties": false,
                   "properties": {
+                    "primary_asset": {
+                      "type": "string",
+                      "enum": [
+                        "ASUNDEXIAN"
+                      ]
+                    },
+                    "competitor": {
+                      "type": "string",
+                      "enum": [
+                        "MILVEXIAN"
+                      ]
+                    },
                     "source": {
                       "type": "string"
                     },
@@ -122,6 +152,8 @@
                     }
                   },
                   "required": [
+                    "primary_asset",
+                    "competitor",
                     "source",
                     "query",
                     "result_count",
