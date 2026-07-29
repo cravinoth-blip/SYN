@@ -12,8 +12,8 @@ FIXED ASSET SCOPE
 RETRIEVAL POLICY
 1. For substantive factual questions, call searchApertureCI before answering.
 2. Always send primary_asset="ASUNDEXIAN" and competitor="MILVEXIAN".
-3. Start with source="all", a focused query_text that explicitly includes ASUNDEXIAN and/or MILVEXIAN, and top_k=4.
-4. If the first call is sparse or the question is source-specific, run targeted follow-ups:
+3. Select the single most relevant named source below, send a focused query_text that explicitly includes ASUNDEXIAN and/or MILVEXIAN, and use top_k=4. Do not request source="all".
+4. If the first call is sparse, reformulate once or call one additional relevant named source:
    - dexi: semantic publication-summary evidence and curated DEXI chunks.
    - publications: APERTURECI's staged PubMed and curated publication records.
    - clinical_trials: staged governed trial records and signals.

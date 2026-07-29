@@ -49,7 +49,6 @@
                   "source": {
                     "type": "string",
                     "enum": [
-                      "all",
                       "dexi",
                       "publications",
                       "clinical_trials",
@@ -60,8 +59,7 @@
                       "competitor_analysis",
                       "schema"
                     ],
-                    "default": "all",
-                    "description": "Governed APERTURECI evidence surface. Use schema for fixed whole-schema search; arbitrary table names are never accepted."
+                    "description": "One governed APERTURECI evidence surface to search. Use schema for fixed whole-schema search; arbitrary table names are never accepted."
                   },
                   "query_text": {
                     "type": "string",
