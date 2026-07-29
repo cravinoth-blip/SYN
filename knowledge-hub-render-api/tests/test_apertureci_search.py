@@ -31,7 +31,16 @@ def test_apertureci_sources_are_fixed():
         "competitor_maps",
         "trial_comparisons",
         "knowledge",
+        "news",
+        "competitor_analysis",
+        "schema",
     )
+
+
+def test_every_schema_data_adapter_is_fixed_in_code():
+    assert hasattr(ApertureCISearchClient, "_search_news")
+    assert hasattr(ApertureCISearchClient, "_search_competitor_analysis")
+    assert hasattr(ApertureCISearchClient, "_search_schema")
 
 
 def test_client_rejects_an_arbitrary_source_before_connecting():

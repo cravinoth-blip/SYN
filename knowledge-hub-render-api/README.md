@@ -106,6 +106,13 @@ The APERTURECI Action is asset-scoped:
 - `query_text` must explicitly include either asset or a supported development-code alias
 - other primary assets and competitors are rejected before Snowflake retrieval
 
+The Action exposes all governed schema data through fixed adapters:
+
+- direct sources for DEXI, publications, clinical trials, competitor maps,
+  trial comparisons, Knowledge, NEWS, and Competitor Analysis
+- `schema` for allow-listed whole-schema discovery across APERTURECI tables/views
+- no request parameter accepts a table, view, column, or SQL identifier
+
 The fixed-schema APERTURECI endpoint is:
 
 ```http

@@ -17,6 +17,9 @@ ApertureSource = Literal[
     "competitor_maps",
     "trial_comparisons",
     "knowledge",
+    "news",
+    "competitor_analysis",
+    "schema",
 ]
 
 DATABASE = "COMMUNICATIONS__EU__DER__DEV"
@@ -40,7 +43,11 @@ ALLOWED_SOURCES = (
     "competitor_maps",
     "trial_comparisons",
     "knowledge",
+    "news",
+    "competitor_analysis",
+    "schema",
 )
+DEFAULT_SOURCES = tuple(source for source in ALLOWED_SOURCES if source != "schema")
 STOP_WORDS = {
     "about",
     "and",
@@ -157,7 +164,7 @@ class ApertureCISearchClient:
         if source != "all" and source not in ALLOWED_SOURCES:
             raise ValueError(f"Unsupported APERTURECI source: {source}")
         safe_limit = max(1, min(int(limit), 8))
-        sources = ALLOWED_SOURCES if source == "all" else (source,)
+        sources = DEFAULT_SOURCES if source == "all" else (source,)
         results: list[dict[str, Any]] = []
         errors: list[dict[str, str]] = []
 
@@ -644,3 +651,224 @@ class ApertureCISearchClient:
             )
             for row in rows
         ]
+
+    def _search_news(
+        self,
+        connection: Any,
+        *,
+        query: str,
+        limit: int,
+        context_id: str | None,
+    ) -> list[dict[str, Any]]:
+        del context_id
+        terms = query_terms(query)
+        if not terms:
+            return []
+        predicate, params = _like_predicate(
+            (
+                "CATEGORY",
+                "PUBLISHED_DATE",
+                "PUBLICATION_INFO",
+                "SEARCH_QUERY",
+                "SNIPPET",
+                "SOURCE",
+                "TITLE",
+            ),
+            terms,
+        )
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                f"""
+                SELECT NEWS_ID, CATEGORY, CITED_BY, PUBLISHED_DATE, LINK,
+                       HTML_URL, PDF_URL, PUBLICATION_INFO, SEARCH_QUERY,
+                       SNIPPET, SOURCE, TITLE, PUBLICATION_YEAR, SOURCE_FILE,
+                       LOADED_AT
+                FROM {DATABASE}.{SCHEMA}.NEWS
+                WHERE {predicate}
+                ORDER BY TRY_TO_DATE(PUBLISHED_DATE, 'MON DD, YYYY') DESC NULLS LAST,
+                         LOADED_AT DESC, TITLE
+                LIMIT {int(limit)}
+                """,
+                tuple(params),
+            )
+            rows = _rows(cursor)
+        finally:
+            cursor.close()
+        return [
+            _evidence(
+                source_type="NEWS",
+                record_id=row.get("NEWS_ID"),
+                title=row.get("TITLE"),
+                text=row.get("SNIPPET") or row.get("PUBLICATION_INFO"),
+                url=row.get("LINK") or row.get("HTML_URL") or row.get("PDF_URL"),
+                metadata={
+                    key.lower(): value
+                    for key, value in row.items()
+                    if key not in {"NEWS_ID", "TITLE", "SNIPPET", "PUBLICATION_INFO"}
+                },
+            )
+            for row in rows
+        ]
+
+    def _search_competitor_analysis(
+        self,
+        connection: Any,
+        *,
+        query: str,
+        limit: int,
+        context_id: str | None,
+    ) -> list[dict[str, Any]]:
+        del context_id
+        terms = query_terms(query)
+        if not terms:
+            return []
+        predicate, params = _like_predicate(
+            (
+                "s.SHEET_NAME",
+                "s.SECTION_TITLE",
+                "s.SECTION_DESCRIPTION",
+                "c.CELL_VALUE",
+                "c.FORMULA",
+            ),
+            terms,
+        )
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                f"""
+                WITH MATCHING_ROWS AS (
+                    SELECT c.WORKBOOK_ID, c.SECTION_ID, c.ROW_NUMBER
+                    FROM {DATABASE}.{SCHEMA}.COMPETITOR_ANALYSIS_CELLS c
+                    JOIN {DATABASE}.{SCHEMA}.COMPETITOR_ANALYSIS_SECTIONS s
+                      ON s.SECTION_ID = c.SECTION_ID
+                    WHERE {predicate}
+                    GROUP BY c.WORKBOOK_ID, c.SECTION_ID, c.ROW_NUMBER
+                )
+                SELECT w.SOURCE_FILE, s.SHEET_NAME, s.SECTION_TITLE,
+                       s.SECTION_DESCRIPTION, c.SECTION_ID, c.ROW_NUMBER,
+                       LISTAGG(
+                           CONCAT(c.CELL_COORDINATE, ': ',
+                                  COALESCE(c.CELL_VALUE, c.FORMULA, '')),
+                           ' | '
+                       ) WITHIN GROUP (ORDER BY c.COLUMN_NUMBER) AS ROW_TEXT
+                FROM MATCHING_ROWS m
+                JOIN {DATABASE}.{SCHEMA}.COMPETITOR_ANALYSIS_WORKBOOKS w
+                  ON w.WORKBOOK_ID = m.WORKBOOK_ID
+                JOIN {DATABASE}.{SCHEMA}.COMPETITOR_ANALYSIS_SECTIONS s
+                  ON s.SECTION_ID = m.SECTION_ID
+                JOIN {DATABASE}.{SCHEMA}.COMPETITOR_ANALYSIS_CELLS c
+                  ON c.SECTION_ID = m.SECTION_ID
+                 AND c.ROW_NUMBER = m.ROW_NUMBER
+                GROUP BY w.SOURCE_FILE, s.SORT_ORDER, s.SHEET_NAME,
+                         s.SECTION_TITLE, s.SECTION_DESCRIPTION,
+                         c.SECTION_ID, c.ROW_NUMBER
+                ORDER BY s.SORT_ORDER, c.ROW_NUMBER
+                LIMIT {int(limit)}
+                """,
+                tuple(params),
+            )
+            rows = _rows(cursor)
+        finally:
+            cursor.close()
+        return [
+            _evidence(
+                source_type="COMPETITOR_ANALYSIS",
+                record_id=f"{row.get('SECTION_ID')}:{row.get('ROW_NUMBER')}",
+                title=(
+                    f"{row.get('SHEET_NAME')} row {row.get('ROW_NUMBER')}"
+                ),
+                text=row.get("ROW_TEXT"),
+                metadata={
+                    "source_file": row.get("SOURCE_FILE"),
+                    "sheet_name": row.get("SHEET_NAME"),
+                    "section_title": row.get("SECTION_TITLE"),
+                    "section_description": row.get("SECTION_DESCRIPTION"),
+                    "row_number": row.get("ROW_NUMBER"),
+                },
+            )
+            for row in rows
+        ]
+
+    def _search_schema(
+        self,
+        connection: Any,
+        *,
+        query: str,
+        limit: int,
+        context_id: str | None,
+    ) -> list[dict[str, Any]]:
+        """Search every APERTURECI table/view without accepting identifiers."""
+        del context_id
+        terms = query_terms(query)
+        if not terms:
+            return []
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                f"""
+                SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
+                FROM {DATABASE}.INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = %s
+                  AND DATA_TYPE NOT IN ('BINARY', 'VARBINARY', 'VECTOR')
+                ORDER BY TABLE_NAME, ORDINAL_POSITION
+                """,
+                (SCHEMA,),
+            )
+            catalog_rows = _rows(cursor)
+        finally:
+            cursor.close()
+
+        columns_by_table: dict[str, list[str]] = {}
+        for row in catalog_rows:
+            columns_by_table.setdefault(str(row["TABLE_NAME"]), []).append(
+                str(row["COLUMN_NAME"])
+            )
+
+        results: list[dict[str, Any]] = []
+        for table_name, columns in columns_by_table.items():
+            if len(results) >= limit:
+                break
+            selected_columns = columns[:30]
+            quoted = [f'"{column.replace(chr(34), chr(34) * 2)}"' for column in selected_columns]
+            blob = "CONCAT_WS(' | ', " + ", ".join(
+                f"COALESCE(TO_VARCHAR({column}), '')" for column in quoted
+            ) + ")"
+            predicates = [f"{blob} ILIKE %s" for _ in terms]
+            object_args = ", ".join(
+                f"'{column.replace(chr(39), chr(39) * 2)}', {quoted_column}"
+                for column, quoted_column in zip(selected_columns, quoted)
+            )
+            table_identifier = table_name.replace('"', '""')
+            table_cursor = connection.cursor()
+            try:
+                table_cursor.execute(
+                    f"""
+                    SELECT SHA2({blob}, 256) AS RECORD_ID,
+                           {blob} AS ROW_TEXT,
+                           OBJECT_CONSTRUCT_KEEP_NULL({object_args}) AS ROW_DATA
+                    FROM {DATABASE}.{SCHEMA}."{table_identifier}"
+                    WHERE {" OR ".join(predicates)}
+                    LIMIT 1
+                    """,
+                    tuple(f"%{term}%" for term in terms),
+                )
+                rows = _rows(table_cursor)
+            except Exception:
+                rows = []
+            finally:
+                table_cursor.close()
+            for row in rows:
+                results.append(
+                    _evidence(
+                        source_type="SCHEMA_ROW",
+                        record_id=f"{table_name}:{row.get('RECORD_ID')}",
+                        title=table_name,
+                        text=row.get("ROW_TEXT"),
+                        metadata={
+                            "table_name": table_name,
+                            "row_data": row.get("ROW_DATA"),
+                        },
+                    )
+                )
+        return results[:limit]

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "APERTURECI ASUNDEXIAN vs MILVEXIAN Search",
-    "description": "Searches governed APERTURECI evidence for ASUNDEXIAN as the primary asset and MILVEXIAN as its sole competitor.",
+    "description": "Searches all governed APERTURECI schema data while keeping ASUNDEXIAN primary and MILVEXIAN the principal competitor.",
     "version": "1.0.0"
   },
   "servers": [
@@ -15,7 +15,7 @@
       "post": {
         "operationId": "searchApertureCI",
         "summary": "Search ASUNDEXIAN and MILVEXIAN evidence",
-        "description": "Searches governed evidence for ASUNDEXIAN as the primary asset and MILVEXIAN as the sole competitor across APERTURECI sources.",
+        "description": "Searches governed APERTURECI vectors, structured analyses, news, workbook sections, knowledge, and fixed whole-schema records.",
         "x-openai-isConsequential": false,
         "security": [
           {
@@ -55,10 +55,13 @@
                       "clinical_trials",
                       "competitor_maps",
                       "trial_comparisons",
-                      "knowledge"
+                      "knowledge",
+                      "news",
+                      "competitor_analysis",
+                      "schema"
                     ],
                     "default": "all",
-                    "description": "Governed APERTURECI evidence surface to search."
+                    "description": "Governed APERTURECI evidence surface. Use schema for fixed whole-schema search; arbitrary table names are never accepted."
                   },
                   "query_text": {
                     "type": "string",
