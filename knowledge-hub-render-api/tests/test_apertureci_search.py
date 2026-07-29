@@ -5,6 +5,7 @@ import pytest
 from apertureci_search import (
     ALLOWED_SOURCES,
     ApertureCISearchClient,
+    DEFAULT_SOURCES,
     query_terms,
     validate_scope_query,
 )
@@ -51,6 +52,35 @@ def test_client_rejects_an_arbitrary_source_before_connecting():
             query="asundexian",
             limit=4,
         )
+
+
+def test_all_source_caps_the_combined_response(monkeypatch):
+    class Connection:
+        def close(self):
+            return None
+
+    client = ApertureCISearchClient(settings=None)
+    monkeypatch.setattr(client, "_connect", lambda: Connection())
+
+    for selected_source in DEFAULT_SOURCES:
+        monkeypatch.setattr(
+            client,
+            f"_search_{selected_source}",
+            lambda connection, *, query, limit, context_id, source=selected_source: [
+                {"SOURCE_TYPE": source, "RECORD_ID": f"{source}-{index}"}
+                for index in range(limit)
+            ],
+        )
+
+    results, errors, _ = client.search(
+        source="all",
+        query="ASUNDEXIAN versus MILVEXIAN",
+        limit=4,
+    )
+
+    assert errors == []
+    assert len(results) == 4
+    assert [row["SOURCE_TYPE"] for row in results] == list(DEFAULT_SOURCES[:4])
 
 
 def test_scope_accepts_primary_asset_and_competitor_aliases():

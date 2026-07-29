@@ -166,6 +166,7 @@ class ApertureCISearchClient:
         safe_limit = max(1, min(int(limit), 8))
         sources = DEFAULT_SOURCES if source == "all" else (source,)
         results: list[dict[str, Any]] = []
+        source_batches: list[list[dict[str, Any]]] = []
         errors: list[dict[str, str]] = []
 
         connection = self._connect()
@@ -173,14 +174,16 @@ class ApertureCISearchClient:
             for selected_source in sources:
                 try:
                     method = getattr(self, f"_search_{selected_source}")
-                    results.extend(
-                        method(
-                            connection,
-                            query=query,
-                            limit=safe_limit,
-                            context_id=context_id,
-                        )
+                    batch = method(
+                        connection,
+                        query=query,
+                        limit=safe_limit,
+                        context_id=context_id,
                     )
+                    if source == "all":
+                        source_batches.append(batch)
+                    else:
+                        results.extend(batch)
                 except Exception as exc:
                     errors.append(
                         {
@@ -191,8 +194,21 @@ class ApertureCISearchClient:
         finally:
             connection.close()
 
+        if source == "all":
+            # ``top_k`` is a response-wide bound. Round-robin keeps an
+            # all-source result diverse without returning top_k rows from
+            # every adapter and overwhelming a GPT Action response.
+            while len(results) < safe_limit:
+                added = False
+                for batch in source_batches:
+                    if batch and len(results) < safe_limit:
+                        results.append(batch.pop(0))
+                        added = True
+                if not added:
+                    break
+
         latency_ms = int((time.perf_counter() - started) * 1000)
-        return results, errors, latency_ms
+        return results[:safe_limit], errors, latency_ms
 
     @staticmethod
     def _cortex_search(
