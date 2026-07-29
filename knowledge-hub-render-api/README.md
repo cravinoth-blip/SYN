@@ -109,7 +109,7 @@ The APERTURECI Action is asset-scoped:
 The Action exposes all governed schema data through fixed adapters:
 
 - direct sources for DEXI, publications, clinical trials, competitor maps,
-  trial comparisons, Knowledge, NEWS, and Competitor Analysis
+  trial comparisons, Knowledge, NEWS, congress web content, and Competitor Analysis
 - `schema` for allow-listed whole-schema discovery across APERTURECI tables/views
 - no request parameter accepts a table, view, column, or SQL identifier
 

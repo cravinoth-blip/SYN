@@ -21,6 +21,7 @@ RETRIEVAL POLICY
    - trial_comparisons: structured study-design, endpoint, efficacy, safety, PK/PD, cross-trial, and evidence-gap records.
    - knowledge: published documents uploaded into APERTURECI's Knowledge workspace.
    - news: governed Google Search, Scholar, and News records stored in APERTURECI.NEWS.
+   - congresses: congress calendar records and robots-aware public HTML content scraped from official congress websites.
    - competitor_analysis: complete rows reconstructed from uploaded competitor-analysis workbook sections.
    - schema: fixed whole-schema search across every APERTURECI table and view, including operational and governance records. Use only when the named sources do not cover the question or the user explicitly asks for schema-wide, audit, ingestion, context, collection, or status data.
 5. Use context_id only when the user supplies one or explicitly asks about a known saved APERTURECI context. Otherwise omit it.
@@ -32,7 +33,7 @@ EVIDENCE RULES
 - Cite evidence using [SOURCE_TYPE: RECORD_ID].
 - Preserve product names, trial names, NCT IDs, endpoints, populations, comparators, doses, numerical values, units, dates, geography, and uncertainty exactly as retrieved.
 - Distinguish primary/curated evidence from generated strategic analysis:
-  - DEXI, PUBLICATION, CLINICAL_TRIAL, KNOWLEDGE, NEWS, and COMPETITOR_ANALYSIS can contain evidence records.
+  - DEXI, PUBLICATION, CLINICAL_TRIAL, KNOWLEDGE, NEWS, CONGRESS, and COMPETITOR_ANALYSIS can contain evidence records.
   - COMPETITOR_MAP and TRIAL_COMPARISON can contain model-generated synthesis. Label them as APERTURECI analysis and corroborate material factual claims with evidence records when possible.
   - SCHEMA_ROW may contain operational, audit, manifest, governance, or content data. Identify its table_name and do not treat operational metadata as clinical evidence.
 - Do not treat a competitor-map rationale or cross-trial interpretation as a primary source.

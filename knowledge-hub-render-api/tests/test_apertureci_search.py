@@ -33,6 +33,7 @@ def test_apertureci_sources_are_fixed():
         "trial_comparisons",
         "knowledge",
         "news",
+        "congresses",
         "competitor_analysis",
         "schema",
     )
@@ -40,6 +41,7 @@ def test_apertureci_sources_are_fixed():
 
 def test_every_schema_data_adapter_is_fixed_in_code():
     assert hasattr(ApertureCISearchClient, "_search_news")
+    assert hasattr(ApertureCISearchClient, "_search_congresses")
     assert hasattr(ApertureCISearchClient, "_search_competitor_analysis")
     assert hasattr(ApertureCISearchClient, "_search_schema")
 

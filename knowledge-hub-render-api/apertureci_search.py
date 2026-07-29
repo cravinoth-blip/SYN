@@ -18,6 +18,7 @@ ApertureSource = Literal[
     "trial_comparisons",
     "knowledge",
     "news",
+    "congresses",
     "competitor_analysis",
     "schema",
 ]
@@ -44,6 +45,7 @@ ALLOWED_SOURCES = (
     "trial_comparisons",
     "knowledge",
     "news",
+    "congresses",
     "competitor_analysis",
     "schema",
 )
@@ -801,6 +803,110 @@ class ApertureCISearchClient:
                     "section_title": row.get("SECTION_TITLE"),
                     "section_description": row.get("SECTION_DESCRIPTION"),
                     "row_number": row.get("ROW_NUMBER"),
+                },
+            )
+            for row in rows
+        ]
+
+    def _search_congresses(
+        self,
+        connection: Any,
+        *,
+        query: str,
+        limit: int,
+        context_id: str | None,
+    ) -> list[dict[str, Any]]:
+        del context_id
+        terms = [
+            term
+            for term in query_terms(query)
+            if term
+            not in {
+                "asundexian",
+                "milvexian",
+                "bay2433334",
+                "bms-986177",
+                "jnj-70033093",
+            }
+        ]
+        if not terms:
+            terms = ["congress"]
+        metadata_columns = (
+            "c.CONFERENCE",
+            "c.DATE_DISPLAY",
+            "c.PLACE",
+            "w.PAGE_TITLE",
+            "w.META_DESCRIPTION",
+        )
+        metadata_blob = "CONCAT_WS(' | ', " + ", ".join(
+            f"COALESCE(TO_VARCHAR({column}), '')" for column in metadata_columns
+        ) + ")"
+        content_blob = "LEFT(COALESCE(w.CONTENT_TEXT, ''), 50000)"
+        patterns = [f"%{term}%" for term in terms]
+        match_score = " + ".join(
+            (
+                f"(IFF({metadata_blob} ILIKE %s, 5, 0) + "
+                f"IFF({content_blob} ILIKE %s, 1, 0))"
+            )
+            for _ in terms
+        )
+        predicate = " OR ".join(
+            (
+                f"({metadata_blob} ILIKE %s OR "
+                f"{content_blob} ILIKE %s)"
+            )
+            for _ in terms
+        )
+        scored_params = [
+            pattern
+            for pattern in patterns
+            for _ in range(2)
+        ]
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                f"""
+                SELECT w.CONTENT_ID, c.CONGRESS_ID, c.CONFERENCE,
+                       c.START_DATE, c.END_DATE, c.DATE_DISPLAY, c.PLACE,
+                       w.PAGE_URL, w.PAGE_TITLE, w.META_DESCRIPTION,
+                       LEFT(w.CONTENT_TEXT, 12000) AS CONTENT_TEXT,
+                       w.CONTENT_HASH, w.CRAWL_DEPTH, w.SCRAPED_AT,
+                       ({match_score}) AS MATCH_SCORE
+                FROM {DATABASE}.{SCHEMA}.CONGRESSES c
+                JOIN {DATABASE}.{SCHEMA}.CONGRESS_WEB_CONTENT w
+                  ON w.CONGRESS_ID = c.CONGRESS_ID
+                WHERE w.CONTENT_TEXT IS NOT NULL
+                  AND {predicate}
+                QUALIFY ROW_NUMBER() OVER (
+                    PARTITION BY w.CONTENT_HASH
+                    ORDER BY w.CRAWL_DEPTH, w.PAGE_URL
+                ) = 1
+                ORDER BY MATCH_SCORE DESC, c.START_DATE,
+                         w.CRAWL_DEPTH, w.PAGE_URL
+                LIMIT {int(limit)}
+                """,
+                tuple(scored_params + scored_params),
+            )
+            rows = _rows(cursor)
+        finally:
+            cursor.close()
+        return [
+            _evidence(
+                source_type="CONGRESS",
+                record_id=row.get("CONTENT_ID"),
+                title=row.get("PAGE_TITLE") or row.get("CONFERENCE"),
+                text=row.get("CONTENT_TEXT") or row.get("META_DESCRIPTION"),
+                url=row.get("PAGE_URL"),
+                metadata={
+                    "congress_id": row.get("CONGRESS_ID"),
+                    "conference": row.get("CONFERENCE"),
+                    "start_date": row.get("START_DATE"),
+                    "end_date": row.get("END_DATE"),
+                    "dates": row.get("DATE_DISPLAY"),
+                    "place": row.get("PLACE"),
+                    "content_hash": row.get("CONTENT_HASH"),
+                    "crawl_depth": row.get("CRAWL_DEPTH"),
+                    "scraped_at": row.get("SCRAPED_AT"),
                 },
             )
             for row in rows
