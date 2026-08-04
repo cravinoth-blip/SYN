@@ -198,6 +198,13 @@ class KnowledgeSearchClient:
         started = time.perf_counter()
         connection = snowflake.connector.connect(**connect_args)
         try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute("USE SECONDARY ROLES NONE")
+                cursor.execute(f"USE DATABASE {self.settings.database}")
+                cursor.execute(f"USE SCHEMA {self.settings.schema}")
+            finally:
+                cursor.close()
             root = Root(connection)
             service = (
                 root.databases[self.settings.database]

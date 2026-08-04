@@ -1,6 +1,11 @@
 # PFIZER ANTIINF Render API
 
-This FastAPI service is permanently restricted to:
+This existing Render service is permanently restricted to the tables, views,
+and Cortex Search service inside:
+
+`COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF`
+
+Its semantic search service is:
 
 `COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF.KNOWLEDGE_SEARCH`
 
@@ -11,28 +16,25 @@ Its isolated source table is:
 The service never reads from `KNOWLEDGE_HUB`. Cortex Search manages embeddings
 with `snowflake-arctic-embed-m-v1.5`; no OpenAI embeddings are created.
 
+The schema browser discovers the live `INFORMATION_SCHEMA` inventory and allows
+read-only retrieval from every table/view in that inventory. It validates every
+object name against that allowlist and never accepts SQL.
+
 ## Render deployment
 
 Create the service from `pfizer-antiinf-render-api/render.yaml`, then configure:
 
 - `SNOWFLAKE_ACCOUNT`
 - `SNOWFLAKE_USER`
-- `SNOWFLAKE_ROLE` when required
+- `SNOWFLAKE_ROLE=RL_COMMUNICATIONS_EU_DER`
 - `SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` when the PEM is encrypted
 - Secret file `private_key.pem`, mounted at `/etc/secrets/private_key.pem`
 - `PFIZER_ANTIINF_API_KEY`
 
 Send `PFIZER_ANTIINF_API_KEY` as the `X-API-Key` request header.
 
-Required grants for the service role:
-
-```sql
-GRANT USAGE ON DATABASE COMMUNICATIONS__EU__DER__DEV TO ROLE <ROLE>;
-GRANT USAGE ON SCHEMA COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF TO ROLE <ROLE>;
-GRANT USAGE ON WAREHOUSE WH_COMMUNICATIONS__EU__DER TO ROLE <ROLE>;
-GRANT USAGE ON CORTEX SEARCH SERVICE
-  COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF.KNOWLEDGE_SEARCH TO ROLE <ROLE>;
-```
+The API uses the existing `RL_COMMUNICATIONS_EU_DER` role for every Snowflake
+connection. This project does not create or assign Snowflake roles.
 
 ## API
 
@@ -40,14 +42,33 @@ GRANT USAGE ON CORTEX SEARCH SERVICE
 - `GET /metadata` with `X-API-Key`
 - `POST /search` with `query` and `limit`
 - `POST /query/` with `query_text` and `top_k`
-- `POST /research/query/` with `source`, `query_text`, and `top_k`
+- `GET /schema/objects` for the live table/view and column inventory
+- `POST /schema/search` to search all or selected tables/views
+- `GET /schema/tables/{table_name}/rows` to browse/search one table/view
+- `GET /products/` with optional `therapeutic_set`
+- `GET /products/{product_key}/trials`
+- `GET /products/{product_key}/publications`
+- `GET /trials/{nct_id}`
+- `GET /publications/{pubmed_id}`
 - `GET /docs`
 
-For dynamic public research, `source` can be `pubmed` or `clinical_trials`.
-The official discovery API finds identifiers from the user's topic, which are
-then hydrated from `COMPILE_ADD_ON.PUBMED_DETAILS.PUBLICATIONS` or
-`COMPILE_ADD_ON.CLINICAL_TRIAL_DETAILS`. This avoids scanning or copying the
-full 184-million-row publications table.
+There is no cross-database research route and no arbitrary SQL endpoint.
+Every Snowflake connection disables secondary roles and fixes the database and
+schema to `COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF`.
 
-The Custom GPT artifacts are `custom-gpt-action.json` and
-`custom-gpt-instructions.txt`.
+## Custom GPT table connector
+
+1. Redeploy the existing Render service and confirm its `/health` endpoint returns
+   `{"status":"ok"}`.
+2. In the GPT editor, open **Configure > Actions**.
+3. Import or paste `custom-gpt-tables-action.json`. It already uses the existing
+   `https://pfizer-antiinf-search-api.onrender.com` hostname.
+4. Set Authentication to **API Key**, Auth Type **Custom**, header name
+   `X-API-Key`, and use the same value as Render's
+   `PFIZER_ANTIINF_API_KEY` secret.
+5. Paste `custom-gpt-tables-instructions.txt` into the GPT instructions.
+6. Test the schema inventory, schema search, table rows, semantic search, and
+   relevant product operations before publishing.
+
+Use `custom-gpt-tables-action.json` and `custom-gpt-tables-instructions.txt` for
+the schema-only Custom GPT connection.

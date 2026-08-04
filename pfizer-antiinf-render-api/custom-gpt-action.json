@@ -1,230 +1,458 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "PFIZER ANTIINF Knowledge Search",
-    "description": "Searches the isolated PFIZER ANTIINF Snowflake knowledge corpus.",
-    "version": "1.0.0"
+    "title": "PFIZER ANTIINF Schema Search",
+    "description": "Read-only discovery and search across every table and view in COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF, plus its governed Cortex Search service.",
+    "version": "2.0.0"
   },
   "servers": [
     {
       "url": "https://pfizer-antiinf-search-api.onrender.com"
     }
   ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
   "paths": {
-    "/query/": {
-      "post": {
-        "operationId": "searchPfizerAntiinf",
-        "summary": "Search PFIZER ANTIINF evidence",
-        "description": "Semantically searches published evidence indexed only in COMMUNICATIONS__EU__DER__DEV.PFIZER_ANTIINF. Use CHUNK_TEXT as evidence. The backend fixes the database, schema and service.",
+    "/schema/objects": {
+      "get": {
+        "operationId": "listPfizerAntiinfSchemaObjects",
+        "summary": "List every table and view in PFIZER_ANTIINF",
+        "description": "Call this first. Returns the live table/view inventory, row counts, column names and data types for the fixed PFIZER_ANTIINF schema.",
         "x-openai-isConsequential": false,
-        "security": [
+        "responses": {
+          "200": {
+            "description": "Schema object inventory.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiResponse"}}}
+          },
+          "401": {"description": "Missing or invalid API key."},
+          "502": {"description": "Snowflake query failed."}
+        }
+      }
+    },
+    "/schema/tables/{table_name}/rows": {
+      "get": {
+        "operationId": "getPfizerAntiinfTableRows",
+        "summary": "Browse or search rows in any PFIZER_ANTIINF table or view",
+        "description": "Reads a validated table/view from the live PFIZER_ANTIINF inventory. It cannot access another schema and does not accept SQL.",
+        "x-openai-isConsequential": false,
+        "parameters": [
           {
-            "ApiKeyAuth": []
+            "name": "table_name",
+            "in": "path",
+            "required": true,
+            "description": "Exact table or view name returned by listPfizerAntiinfSchemaObjects.",
+            "schema": {"type": "string", "pattern": "^[A-Za-z0-9_]+$"}
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10}
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "integer", "minimum": 0, "maximum": 100000, "default": 0}
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Optional case-insensitive text to find across searchable columns in this object.",
+            "schema": {"type": "string", "maxLength": 200}
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Rows from the selected table or view.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiResponse"}}}
+          },
+          "401": {"description": "Missing or invalid API key."},
+          "422": {"description": "Object is outside PFIZER_ANTIINF or parameters are invalid."}
+        }
+      }
+    },
+    "/schema/search": {
+      "post": {
+        "operationId": "searchPfizerAntiinfSchema",
+        "summary": "Search across all PFIZER_ANTIINF tables and views",
+        "description": "Searches searchable columns across every live table and view, or an optional subset. Results identify their source table.",
+        "x-openai-isConsequential": false,
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "query_text": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 4000,
-                    "description": "A focused semantic query for PFIZER ANTIINF evidence."
-                  },
-                  "top_k": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 8,
-                    "default": 3,
-                    "description": "Number of evidence passages to retrieve."
-                  }
-                },
-                "required": [
-                  "query_text"
-                ]
-              }
-            }
-          }
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SchemaSearchRequest"}}}
         },
         "responses": {
           "200": {
-            "description": "Relevant PFIZER ANTIINF passages.",
+            "description": "Matches across the fixed schema.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiResponse"}}}
+          },
+          "401": {"description": "Missing or invalid API key."},
+          "422": {"description": "A selected object is outside PFIZER_ANTIINF or the request is invalid."}
+        }
+      }
+    },
+    "/query/": {
+      "post": {
+        "operationId": "searchPfizerAntiinfKnowledge",
+        "summary": "Semantically search PFIZER_ANTIINF knowledge chunks",
+        "description": "Uses the governed KNOWLEDGE_SEARCH Cortex Search service for evidence-oriented semantic retrieval from the schema's document corpus.",
+        "x-openai-isConsequential": false,
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/KnowledgeSearchRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Relevant knowledge chunks and source metadata.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiResponse"}}}
+          },
+          "401": {"description": "Missing or invalid API key."}
+        }
+      }
+    },
+    "/products/": {
+      "get": {
+        "operationId": "listAntiInfectiveProducts",
+        "summary": "List anti-infective products and record counts",
+        "description": "Call this first to resolve canonical PRODUCT_KEY values and see trial and publication coverage. Optionally filter to the antibacterial or antifungal set.",
+        "x-openai-isConsequential": false,
+        "parameters": [
+          {
+            "name": "therapeutic_set",
+            "in": "query",
+            "required": false,
+            "description": "Optional governed product-set filter.",
+            "schema": {
+              "type": "string",
+              "enum": ["ANTIBACTERIAL", "ANTIFUNGAL"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog records and coverage counts.",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "properties": {
-                    "context": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/EvidencePassage"
-                      }
-                    }
-                  },
-                  "required": [
-                    "context"
-                  ]
-                }
+                "schema": {"$ref": "#/components/schemas/ApiResponse"}
               }
             }
           },
           "401": {
             "description": "Missing or invalid API key."
           },
-          "422": {
-            "description": "Invalid request body."
-          },
           "502": {
-            "description": "Snowflake Cortex Search failed."
-          },
-          "503": {
-            "description": "Search service configuration is unavailable."
+            "description": "Snowflake query failed."
           }
         }
       }
     },
-    "/research/query/": {
-      "post": {
-        "operationId": "searchPfizerResearch",
-        "summary": "Search PubMed or clinical trials",
-        "description": "Uses the user query to discover relevant IDs, then returns authoritative records from COMPILE_ADD_ON.PUBMED_DETAILS.PUBLICATIONS or CLINICAL_TRIAL_DETAILS.",
+    "/products/{product_key}/trials": {
+      "get": {
+        "operationId": "getAntiInfectiveProductTrials",
+        "summary": "Get clinical trials for one product",
+        "description": "Returns trial details, interventions, conditions, sponsors, references and source URL for a canonical PRODUCT_KEY.",
         "x-openai-isConsequential": false,
-        "security": [
+        "parameters": [
           {
-            "ApiKeyAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "source": {
-                    "type": "string",
-                    "enum": [
-                      "pubmed",
-                      "clinical_trials"
-                    ],
-                    "description": "External governed source to query."
-                  },
-                  "query_text": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 1000,
-                    "description": "Dynamic topic supplied or implied by the user."
-                  },
-                  "top_k": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 10,
-                    "default": 5
-                  }
-                },
-                "required": [
-                  "source",
-                  "query_text"
-                ]
-              }
+            "name": "product_key",
+            "in": "path",
+            "required": true,
+            "description": "Canonical key returned by listAntiInfectiveProducts, such as CRESEMBA, ZAVICEFTA or FETCROJA.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Zero-based pagination offset.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0
+            }
+          },
+          {
+            "name": "overall_status",
+            "in": "query",
+            "required": false,
+            "description": "Optional exact trial status returned by Snowflake, for example RECRUITING or COMPLETED.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "phase",
+            "in": "query",
+            "required": false,
+            "description": "Optional exact phase value returned by Snowflake.",
+            "schema": {
+              "type": "string"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
-            "description": "Authoritative PubMed or clinical-trial records from Snowflake."
+            "description": "Paginated product-linked clinical trials.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ApiResponse"}
+              }
+            }
           },
           "401": {
             "description": "Missing or invalid API key."
           },
           "422": {
-            "description": "Invalid source or request body."
+            "description": "Invalid product key or pagination values."
+          }
+        }
+      }
+    },
+    "/products/{product_key}/publications": {
+      "get": {
+        "operationId": "getAntiInfectiveProductPublications",
+        "summary": "Get linked PubMed publications for one product",
+        "description": "Returns one record per PMID with abstract, journal, MeSH terms, authors, linked NCT IDs and PubMed source URL.",
+        "x-openai-isConsequential": false,
+        "parameters": [
+          {
+            "name": "product_key",
+            "in": "path",
+            "required": true,
+            "description": "Canonical key returned by listAntiInfectiveProducts.",
+            "schema": {
+              "type": "string"
+            }
           },
-          "502": {
-            "description": "Discovery or Snowflake lookup failed."
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated product-linked PubMed records.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ApiResponse"}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key."
+          }
+        }
+      }
+    },
+    "/trials/{nct_id}": {
+      "get": {
+        "operationId": "getAntiInfectiveTrialByNctId",
+        "summary": "Get a specific trial by NCT ID",
+        "description": "Returns all anti-infective product relationships and structured trial details for an exact NCT ID.",
+        "x-openai-isConsequential": false,
+        "parameters": [
+          {
+            "name": "nct_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^NCT[0-9]{8}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching trial and product relationships.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ApiResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "Trial not found in the governed product dataset."
+          }
+        }
+      }
+    },
+    "/publications/{pubmed_id}": {
+      "get": {
+        "operationId": "getAntiInfectivePublicationByPmid",
+        "summary": "Get a specific publication by PMID",
+        "description": "Returns the publication, authors, related products, related trials and PubMed source URL for an exact PMID.",
+        "x-openai-isConsequential": false,
+        "parameters": [
+          {
+            "name": "pubmed_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching structured publication record.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ApiResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "Publication not found in the governed product dataset."
           }
         }
       }
     }
   },
   "components": {
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "description": "Response from a fixed read-only PFIZER_ANTIINF endpoint.",
+        "properties": {
+          "result_count": {"type": "integer"},
+          "latency_ms": {"type": "integer"},
+          "database": {"type": "string"},
+          "schema": {"type": "string"},
+          "object_count": {"type": "integer"},
+          "table_name": {"type": "string"},
+          "query": {"type": "string"},
+          "product_key": {"type": "string"},
+          "nct_id": {"type": "string"},
+          "pubmed_id": {"type": "string"},
+          "limit": {"type": "integer"},
+          "offset": {"type": "integer"},
+          "products": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          },
+          "trials": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          },
+          "publications": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          },
+          "records": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          },
+          "objects": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          },
+          "rows": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          },
+          "results": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          },
+          "context": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/DataRecord"}
+          }
+        },
+        "additionalProperties": true
+      },
+      "DataRecord": {
+        "type": "object",
+        "description": "A row, schema object, knowledge chunk, product, trial, or publication record.",
+        "properties": {
+          "TABLE_NAME": {"type": "string"},
+          "TABLE_TYPE": {"type": "string"},
+          "ROW_COUNT": {"type": ["integer", "null"]},
+          "COLUMNS": {"type": "array", "items": {"type": "object", "properties": {}, "additionalProperties": true}},
+          "RECORD": {"type": "object", "properties": {}, "additionalProperties": true},
+          "CHUNK_ID": {"type": "string"},
+          "CHUNK_TEXT": {"type": "string"},
+          "PRODUCT_KEY": {"type": "string"},
+          "DISPLAY_NAME": {"type": "string"},
+          "THERAPEUTIC_SET": {"type": "string"},
+          "NCT_ID": {"type": "string"},
+          "PUBMED_ID": {"type": "string"},
+          "ARTICLE_TITLE": {"type": "string"},
+          "SOURCE_URL": {"type": "string"},
+          "OVERALL_STATUS": {"type": "string"}
+        },
+        "additionalProperties": true
+      },
+      "SchemaSearchRequest": {
+        "type": "object",
+        "description": "Schema-wide keyword search request.",
+        "properties": {
+          "query": {"type": "string", "minLength": 1, "maxLength": 200},
+          "table_names": {
+            "type": "array",
+            "maxItems": 15,
+            "items": {"type": "string"}
+          },
+          "per_table_limit": {"type": "integer", "minimum": 1, "maximum": 5, "default": 3},
+          "total_limit": {"type": "integer", "minimum": 1, "maximum": 50, "default": 30}
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      },
+      "KnowledgeSearchRequest": {
+        "type": "object",
+        "description": "Cortex semantic search request.",
+        "properties": {
+          "query_text": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "top_k": {"type": "integer", "minimum": 1, "maximum": 50, "default": 12}
+        },
+        "required": ["query_text"],
+        "additionalProperties": false
+      }
+    },
     "securitySchemes": {
       "ApiKeyAuth": {
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key"
-      }
-    },
-    "schemas": {
-      "EvidencePassage": {
-        "type": "object",
-        "additionalProperties": true,
-        "properties": {
-          "CHUNK_ID": {
-            "type": "string"
-          },
-          "CHUNK_TEXT": {
-            "type": "string",
-            "description": "The retrieved passage and primary evidence."
-          },
-          "DOCUMENT_ID": {
-            "type": "string"
-          },
-          "TITLE": {
-            "type": "string"
-          },
-          "ORIGINAL_FILENAME": {
-            "type": "string"
-          },
-          "PAGE_FROM": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "PAGE_TO": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "SECTION_PATH": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "DOCUMENT_TYPE": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "LANGUAGE": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "EVIDENCE_TYPE": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "CHUNK_ID",
-          "CHUNK_TEXT",
-          "DOCUMENT_ID"
-        ]
       }
     }
   }

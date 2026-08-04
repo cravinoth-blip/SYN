@@ -19,7 +19,7 @@ services:
       - key: SNOWFLAKE_USER
         sync: false
       - key: SNOWFLAKE_ROLE
-        sync: false
+        value: RL_COMMUNICATIONS_EU_DER
       - key: SNOWFLAKE_PRIVATE_KEY_PASSPHRASE
         sync: false
       - key: PFIZER_ANTIINF_API_KEY
