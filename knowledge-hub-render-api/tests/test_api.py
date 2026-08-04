@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 import main
 from knowledge_search import build_filter
+from knowledge_search import _normalise_response
 import research_search
 
 
@@ -113,6 +114,13 @@ def test_filter_is_allow_listed():
             {"@eq": {"DOCUMENT_TYPE": "PDF"}},
         ]
     }
+
+
+def test_sql_preview_response_is_normalised():
+    payload = '{"results":[{"chunk_id":"chunk-1","chunk_text":"Evidence"}]}'
+    assert _normalise_response(payload) == [
+        {"CHUNK_ID": "chunk-1", "CHUNK_TEXT": "Evidence"}
+    ]
 
 
 def test_research_query_returns_snowflake_records(monkeypatch):

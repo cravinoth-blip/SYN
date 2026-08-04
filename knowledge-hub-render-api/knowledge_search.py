@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_RESULT_COLUMNS = (
@@ -215,8 +219,27 @@ class KnowledgeSearchClient:
             }
             if search_filter:
                 search_args["filter"] = search_filter
-            response = service.search(**search_args)
-            results = _normalise_response(response)
+            try:
+                response = service.search(**search_args)
+                results = _normalise_response(response)
+            except Exception as sdk_error:
+                logger.warning(
+                    "Cortex SDK search failed; retrying with SEARCH_PREVIEW: %s",
+                    type(sdk_error).__name__,
+                )
+                preview_request = json.dumps(search_args)
+                safe_service = self.settings.service.replace("'", "''")
+                cursor = connection.cursor()
+                try:
+                    cursor.execute(
+                        "SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW("
+                        f"'{safe_service}', %s)",
+                        (preview_request,),
+                    )
+                    raw_response = cursor.fetchone()[0]
+                    results = _normalise_response(raw_response)
+                finally:
+                    cursor.close()
         finally:
             connection.close()
 
