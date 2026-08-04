@@ -160,7 +160,10 @@ def execute_search(request: SearchRequest) -> dict:
 
 @app.get("/health", tags=["operations"])
 def health() -> dict[str, str]:
-    return {"status": "ok", "search_fallback": "sdk_then_sql_preview"}
+    return {
+        "status": "ok",
+        "search_fallback": "sdk_then_sql_preview_default_role",
+    }
 
 
 @app.get("/metadata", dependencies=[Depends(require_api_key)], tags=["operations"])

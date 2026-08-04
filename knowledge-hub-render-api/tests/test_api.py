@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 import main
 from knowledge_search import build_filter
 from knowledge_search import _normalise_response
+from knowledge_search import SearchSettings
 import research_search
 
 
@@ -55,8 +56,17 @@ def test_health_does_not_require_credentials():
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "search_fallback": "sdk_then_sql_preview",
+        "search_fallback": "sdk_then_sql_preview_default_role",
     }
+
+
+def test_settings_uses_service_users_default_role(monkeypatch):
+    monkeypatch.setenv("SNOWFLAKE_ACCOUNT", "account")
+    monkeypatch.setenv("SNOWFLAKE_USER", "service-user")
+    monkeypatch.setenv("SNOWFLAKE_PRIVATE_KEY_PATH", __file__)
+    monkeypatch.setenv("SNOWFLAKE_ROLE", "UNAUTHORIZED_EXPLICIT_ROLE")
+
+    assert SearchSettings.from_environment().role is None
 
 
 def test_search_requires_api_key(monkeypatch):

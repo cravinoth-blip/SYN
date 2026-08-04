@@ -89,7 +89,9 @@ class SearchSettings:
             ).strip(),
             schema=os.getenv("SNOWFLAKE_SCHEMA", "KNOWLEDGE_HUB").strip(),
             service=os.getenv("SNOWFLAKE_CORTEX_SEARCH_SERVICE", "KNOWLEDGE_SEARCH").strip(),
-            role=os.getenv("SNOWFLAKE_ROLE", "").strip() or None,
+            # Use the key-pair service user's authorized default role. An explicit
+            # Render role can make an otherwise valid connection fail before search.
+            role=None,
             private_key_path=key_path,
             private_key_passphrase=(
                 os.getenv("SNOWFLAKE_PRIVATE_KEY_PASSPHRASE", "").strip() or None

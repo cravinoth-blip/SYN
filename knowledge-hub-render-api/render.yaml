@@ -24,8 +24,6 @@ services:
         sync: false
       - key: SNOWFLAKE_USER
         sync: false
-      - key: SNOWFLAKE_ROLE
-        sync: false
       - key: SNOWFLAKE_PRIVATE_KEY_PASSPHRASE
         sync: false
       - key: KNOWLEDGE_HUB_API_KEY
