@@ -53,7 +53,10 @@ def setup_function():
 def test_health_does_not_require_credentials():
     response = TestClient(main.app).get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {
+        "status": "ok",
+        "search_fallback": "sdk_then_sql_preview",
+    }
 
 
 def test_search_requires_api_key(monkeypatch):
